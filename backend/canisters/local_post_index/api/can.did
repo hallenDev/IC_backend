@@ -1,0 +1,9 @@
+type CanisterId = principal;
+
+type InitArgs = record {
+    user_index_canister_id: CanisterId;
+    post_index_canister_id: CanisterId;
+};
+
+service: (args: InitArgs) -> {
+}

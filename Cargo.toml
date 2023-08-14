@@ -1,0 +1,67 @@
+[workspace]
+members = [
+    "backend/canisters/user_index/api",
+    "backend/canisters/user_index/c2c_client",
+    "backend/canisters/user_index/impl",
+    "backend/canisters/local_user_index/api",
+    "backend/canisters/local_user_index/c2c_client",
+    "backend/canisters/local_user_index/impl",
+    "backend/canisters/post_index/api",
+    "backend/canisters/post_index/c2c_client",
+    "backend/canisters/post_index/impl",
+    "backend/canisters/local_post_index/api",
+    "backend/canisters/local_post_index/c2c_client",
+    "backend/canisters/local_post_index/impl",
+    "backend/libraries/canister_api_macros",
+    "backend/libraries/canister_client_macros",
+    "backend/libraries/canister_client",
+    "backend/libraries/canister_logger",
+    "backend/libraries/canister_state_macros",
+    "backend/libraries/http_request",
+    "backend/libraries/msgpack",
+    "backend/libraries/serializer",
+    "backend/libraries/types",
+    "backend/libraries/utils",
+]
+
+[workspace.dependencies]
+candid = "0.9.3"
+email_address = "0.2.4"
+futures = "0.3.28"
+getrandom = "0.2.10"
+ic-cdk = "0.10.0"
+ic-cdk-macros = "0.7.0"
+ic-cdk-timers = "0.4.0"
+ic-stable-memory = "0.4.4"
+ic-stable-structures = "0.5.4"
+itertools = "0.11.0"
+jwt-simple = "0.11.6"
+lzma-rs = "0.3.0"
+num-traits = "0.2.16"
+proc-macro2 = "1.0.66"
+quote = "1.0.32"
+rand = "0.8.5"
+rand_core = "0.6.4"
+rmp-serde = "1.1.2"
+rust-argon2 = "1.0.0"
+serde = "1.0.181"
+serde_bytes = "0.11.12"
+serde_json = "1.0.104"
+serde_tokenstream = "0.2.0"
+syn = "2.0.28"
+tracing = "0.1.37"
+tracing-attributes = "0.1.26"
+tracing-subscriber = "0.3.17"
+url = "2.4.0"
+uuid = "1.4.1"
+x509-parser = "0.15.0"
+
+[profile.release]
+lto = true
+opt-level = "z"
+codegen-units = 1
+debug = false
+
+[patch.crates-io]
+ic-cdk-macros = { git = "https://github.com/hpeebles/cdk-rs", rev = "cc49cf7e3e2f10a12182149b0964372a04c09f08" }
+ic-stable-structures = { git = "https://github.com/hpeebles/stable-structures", rev = "f269d532e9729c2213c35c324292ceaf775a8973" }

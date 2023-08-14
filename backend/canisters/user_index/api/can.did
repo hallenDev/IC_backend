@@ -1,0 +1,195 @@
+type CanisterId = principal;
+type EmptyArgs = record {};
+type EmptyResponse = variant{ Success; };
+type NobleId = nat64;
+type TimestampMillis = nat64;
+
+type RegisterUserArgs = record {
+    username: text;
+    email: text;
+    password: text;
+    password_confirm: text;
+};
+
+type RegisterUserResponse = variant {
+    Success: record {
+        canister_id: CanisterId;
+    };
+    AlreadyRegistered;
+    UserLimitReached;
+    UsernameInvalid;
+    UsernameTooShort: nat16;
+    UsernameTooLong: nat16;
+    UsernameAlreayExist;
+    CyclesBalanceTooLow;
+    InternalError: text;
+    PublicKeyInvalid: text;
+    ReferralCodeInvalid;
+    ReferralCodeAlreadyClaimed;
+    ReferralCodeExpired;
+    PasswordIsRequired;
+    PasswordLengthIsInvalid: record{nat16; nat16};
+    PasswordIsnotMatch;
+    PasswordHashError;
+    EmailIsInvalid;
+};
+
+type CheckUsernameArgs = record {
+    username : text;
+};
+
+type CheckUsernameResponse = variant {
+    Success;
+    UsernameTaken;
+    UsernameInvalid;
+    UsernameTooShort : nat16;
+    UsernameTooLong : nat16;
+};
+
+
+type CheckEmailArgs = record {
+    email : text;
+};
+
+type CheckEmailResponse = variant {
+    Success;
+    EmailAlreadyExist;
+};
+
+type UserArgs = record {
+    jwt: text;
+    noble_id: NobleId;
+};
+
+type FollowingUser = record {
+    noble_id: NobleId;
+    is_muted: bool;
+};
+
+type Follower = record {
+    noble_id: NobleId;
+    is_approved: bool;
+};
+
+type UserDetail = record {
+    noble_id: NobleId;
+    username: text;
+    first_name: text;
+    last_name: text;
+    country: text;
+    city: text;
+    photo: vec nat8;
+    email: text;
+    bio: text;
+
+    // social links
+    linkedin_handle: text;
+    twitter_handle: text;
+    mastodon_handle: text;
+    github_handle: text;
+    facebook_handle: text;
+    personal_website: text;
+
+    followers: vec Follower;
+    following_list: vec FollowingUser;
+
+    date_created: TimestampMillis;
+    date_updated: TimestampMillis;
+};
+
+type UserResponse = variant {
+    Success: UserDetail;
+    PermissionDenied;
+    UserNotFound;
+    InternalError: text;
+};
+
+type UserSummary = record {
+    noble_id: NobleId;
+    canister_id: CanisterId;
+    username: text;
+    email: text;
+    first_name: text;
+    last_name: text;
+    country: text;
+    city: text;
+    bio: text;
+    date_created: TimestampMillis;
+};
+
+type SearchUserArgs = record {
+    jwt: text;
+    search_term : text;
+    max_results : nat8;
+};
+
+type SearchUserResponse = variant {
+    Success : record {
+        users : vec UserSummary;
+        timestamp : TimestampMillis;
+    };
+    PermissionDenied;
+};
+
+type SearchUserByUsernameArgs = record {
+    jwt: text;
+    search_term : text;
+    max_results : nat8;
+};
+
+type SearchUserByUsernameResponse = variant {
+    Success : record {
+        users : vec UserSummary;
+        timestamp : TimestampMillis;
+    };
+    PermissionDenied;
+};
+
+type LoginUserArgs = record {
+    email: text;
+    password: text;
+};
+
+type LoginUserResponse = variant {
+    Success: record {
+        canister_id: CanisterId;
+        jwt: text;
+    };
+    UnregisteredUser;
+    EmailOrPasswordIncorrect;
+    InternalError: text;
+};
+
+type TestArgs = record {
+    user_index_canister_id: principal;
+};
+
+type InitArgs = record {
+    internet_identity_canister_id: CanisterId;
+    post_index_canister_id: CanisterId;
+    local_user_index_canister_ids: vec CanisterId;
+};
+
+service: (args: InitArgs) -> {
+    greet: (text) -> (text) query;
+
+    // register user and return registered local user index canister.
+    register_user : (RegisterUserArgs) -> (RegisterUserResponse);
+
+    // login user
+    login_user: (LoginUserArgs) -> (LoginUserResponse);
+
+    // This check whether the username already exists
+    check_username : (CheckUsernameArgs) -> (CheckUsernameResponse) query;
+
+    // This check whether the username already exists
+    check_email : (CheckEmailArgs) -> (CheckEmailResponse) query;
+
+    user: (UserArgs) -> (UserResponse) query;
+
+    // search users by personal information.
+    search_user: (SearchUserArgs) -> (SearchUserResponse) query;
+
+    // search users by username.
+    search_user_by_username: (SearchUserByUsernameArgs) -> (SearchUserByUsernameResponse) query;
+}

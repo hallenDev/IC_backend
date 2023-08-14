@@ -1,0 +1,89 @@
+type CanisterId = principal;
+type NobleId = nat64;
+type PostId = nat64;
+type FileId = nat;
+type TimestampMillis = nat64;
+
+type InitArgs = record {
+    user_index_canister_id: CanisterId;
+    local_post_index_canister_ids: vec CanisterId;
+};
+
+type Category = variant {
+    GeneralDiscussion;
+    Questions;
+    IntroduceYourself;
+    UserFeedback;
+};
+
+type PostPrivacy = variant {
+    AnyBody;
+    Followers;
+    SpecificUsers;
+};
+
+type NewPostArgs = record {
+    jwt: text;
+    title: text;
+    description: text;
+    category: Category;
+    link_url: text;
+    video_url: text;
+    attached_file_id: FileId;
+    post_privacy: PostPrivacy;
+    invited_users: vec NobleId;
+};
+
+type NewPostResponse = variant {
+    Success: record { CanisterId; PostId;};
+    PermissionDenied;
+    PostLimitReached;
+    InternalError: text;
+    Error: record {
+        title: text;
+        description: text;
+        category: text;
+    };
+};
+
+type GetPostsByCategoryArgs = record {
+    jwt: text;
+    page: nat32;
+    limit: nat32;
+    category: opt Category;
+    sort: variant {
+        RecentActivity;
+        NewestPost;
+    };
+};
+
+type PostSummary = record {
+    post_id: PostId;
+    owner: NobleId;
+    title: text;
+    description: text;
+    category: Category;
+    link_url: text;
+    video_url: text;
+    attached_file_id: FileId;
+    liked_user_count: nat32;
+    contributed_users: vec NobleId;
+    date_created: TimestampMillis;
+    date_last_commented: TimestampMillis;
+};
+
+type GetPostsByCategoryResponse = variant {
+    Success: record {
+        total_posts_count: nat32;
+        posts: vec PostSummary;
+        timestamp: TimestampMillis;
+    };
+    PermissionDenied;
+    InternalError: text;
+};
+
+service: (args: InitArgs) -> {
+    new_post: (NewPostArgs) -> (NewPostResponse);
+
+    get_posts_by_category: (GetPostsByCategoryArgs) -> (GetPostsByCategoryResponse) query;
+}

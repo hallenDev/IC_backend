@@ -1,0 +1,359 @@
+type Empty = record {};
+type NobleId = nat64;
+type TimestampMillis = nat64;
+
+type PreferredPronouns = variant {
+    SheHer;
+    TheyThem;
+    HeHim;
+    Other;
+    Prefernottosay;
+};
+
+type AccountPrivacy = variant {
+    AnyBodyCanView;
+    ApprovedFollowersCanView;
+    OnlyMe;
+};
+
+type CheckPasswordArgs = record {
+    jwt: text;
+    password: text;
+};
+
+type CheckPasswordResponse = variant {
+    Success;
+    PermissionDenied;
+    UserNotFound;
+    Error;
+};
+
+type FollowingUser = record {
+    noble_id: NobleId;
+    is_muted: bool;
+};
+
+type Follower = record {
+    noble_id: NobleId;
+    is_approved: bool;
+};
+
+type CurrentUserArgs = record {
+    jwt: text;
+};
+
+type CurrentUserResponse = variant {
+    Success: record {
+        noble_id: NobleId;
+        username: text;
+        first_name: text;
+        last_name: text;
+        country: text;
+        city: text;
+        preferred_pronouns: opt PreferredPronouns;
+        photo: vec nat8;
+        email: text;
+        search_by_email: bool;
+        bio: text;
+        account_privacy: AccountPrivacy;
+
+        linkedin_handle: text;
+        twitter_handle: text;
+        mastodon_handle: text;
+        github_handle: text;
+        facebook_handle: text;
+        personal_website: text;
+
+        followers: vec Follower;
+        following_list: vec  FollowingUser;
+        block_users: vec NobleId;
+
+        date_created: TimestampMillis;
+        date_updated: TimestampMillis;
+    };
+    UserNotFound;
+    PermissionDenied;
+};
+
+type SetNameArgs = record {
+    jwt: text;
+    first_name: text;
+    last_name: text;
+};
+
+type SetNameResponse = variant {
+    Success;
+    InputIsInvalid;
+    UserNotFound;
+    PermissionDenied;
+};
+
+type SetBioArgs = record {
+    jwt: text;
+    bio: text;
+};
+
+type SetBioResponse = variant {
+    Success;
+    UserNotFound;
+    BioTooLong: nat32;
+    PermissionDenied;
+};
+
+type SetPhotoArgs = record {
+    jwt: text;
+    photo: vec nat8;
+};
+
+type SetPhotoResponse = variant {
+    Success;
+    UserNotFound;
+    PhotoTooBig: nat32;
+    PermissionDenied;
+};
+
+type SetLocationArgs = record {
+    jwt: text;
+    country: text;
+    city: text;
+};
+
+type SetLocationResponse = variant {
+    Success;
+    UserNotFound;
+    PermissionDenied;
+};
+
+type SetPreferredPronounsArgs = record {
+    jwt: text;
+    preferred_pronouns: opt PreferredPronouns;
+};
+
+type SetPreferredPronounsResponse = variant {
+    Success;
+    UserNotFound;
+    PermissionDenied;
+};
+
+type SetSearchByEmailArgs = record {
+    jwt: text;
+    search_by_email: bool;
+};
+
+type SetSearchByEmailResponse = variant {
+    Success;
+    UserNotFound;
+    PermissionDenied;
+};
+
+type SetAccountPrivacyArgs = record {
+    jwt: text;
+    account_privacy: AccountPrivacy;
+};
+
+type SetAccountPrivacyResponse = variant {
+    Success;
+    UserNotFound;
+    PermissionDenied;
+};
+
+type DeleteAccountArgs = record {
+    jwt: text;
+};
+
+type DeleteAccountResponse = variant {
+    Success;
+    UserNotFound;
+    PermissionDenied;
+};
+
+type SetSocialLinksArgs = record {
+    jwt: text;
+    linkedin_handle: text;
+    twitter_handle: text;
+    mastodon_handle: text;
+    github_handle: text;
+    facebook_handle: text;
+    personal_website: text;
+};
+
+type SetSocialLinksResponse = variant {
+    Success;
+    UserNotFound;
+    Error: record {
+        linkedin_handle: text;
+        twitter_handle: text;
+        mastodon_handle: text;
+        github_handle: text;
+        facebook_handle: text;
+        personal_website: text;
+    };
+    PermissionDenied;
+};
+
+type MuteUserArgs = record {
+    jwt: text;
+    noble_id: NobleId;
+};
+
+type MuteUserResponse = variant {
+    Success;
+    AlreadyMuted;
+    NotFollowingUser;
+    UserNotFound;
+    PermissionDenied;
+};
+
+type UnmuteUserArgs = record {
+    jwt: text;
+    noble_id: NobleId;
+};
+
+type UnmuteUserResponse = variant {
+    Success;
+    AlreadyUnmuted;
+    UserNotFound;
+    PermissionDenied;
+};
+
+type SetUsernameArgs = record {
+    jwt: text;
+    username: text;
+};
+
+type SetUsernameResponse = variant {
+    Success;
+    UsernameTaken;
+    UserNotFound;
+    UsernameInvalid;
+    UsernameTooShort: nat16;
+    UsernameTooLong: nat16;
+    PermissionDenied;
+    InternalError: text;
+};
+
+type SetEmailArgs = record {
+    jwt: text;
+    email: text;
+};
+
+type SetEmailResponse = variant {
+    Success;
+    PermissionDenied;
+    EmailIsInvalid;
+    UserNotFound;
+    EmailAlreadyExist;
+    InternalError: text;
+};
+
+type FollowUserArgs = record {
+    jwt: text;
+    noble_id: NobleId;
+};
+
+type FollowUserResponse = variant {
+    Success;
+    AlreadyFollowing;
+    UserNotFound;
+    InternalError: text;
+    PermissionDenied;
+};
+
+type UnfollowUserArgs = record {
+    jwt: text;
+    noble_id: NobleId;
+};
+
+type UnfollowUserResponse = variant {
+    Success;
+    UserNotFound;
+    InternalError: text;
+    PermissionDenied;
+};
+
+type AddBlockUserArgs = record {
+    jwt: text;
+    noble_id: NobleId;
+};
+
+type AddBlockUserResponse = variant {
+    Success;
+    AlreadyBlocked;
+    UserNotFound;
+    InternalError: text;
+    PermissionDenied;
+};
+
+type RemoveBlockUserArgs = record {
+    jwt: text;
+    noble_id: NobleId;
+};
+
+type RemoveBlockUserResponse = variant {
+    Success;
+    BlockUserNotFound;
+    UserNotFound;
+    InternalError: text;
+    PermissionDenied;
+};
+
+type FollowRequestArgs = record {
+    jwt: text;
+    noble_id: NobleId;
+};
+
+type FollowRequestResponse = variant {
+    Success;
+    UserNotFound;
+    UnfollowState;
+    InternalError: text;
+    PermissionDenied;
+};
+
+type InitArgs = record {
+    user_index_canister_id : principal;
+    post_index_canister_id : principal;
+};
+
+service: (args: InitArgs) -> {
+    // register_user: (RegisterUserArgs) -> (RegisterUserResponse);
+
+    // This check user's password whether it is correct
+    // check_password: (CheckPasswordArgs) -> (CheckPasswordResponse) query;
+
+    // apis to update user profile
+    set_username : (SetUsernameArgs) -> (SetUsernameResponse);
+    set_email : (SetEmailArgs) -> (SetEmailResponse);
+    set_name: (SetNameArgs) -> (SetNameResponse);
+    set_photo: (SetPhotoArgs) -> (SetPhotoResponse);
+    set_bio: (SetBioArgs) -> (SetBioResponse);
+    // -> set location(country, city).
+    set_location: (SetLocationArgs) -> (SetLocationResponse);
+    set_preferred_pronouns: (SetPreferredPronounsArgs) -> (SetPreferredPronounsResponse);
+    // -> enable/disable feature anyone can search you by email
+    set_search_by_email: (SetSearchByEmailArgs) -> (SetSearchByEmailResponse);
+    // -> public/private your account
+    set_account_privacy: (SetAccountPrivacyArgs) -> (SetAccountPrivacyResponse);
+    delete_account: (DeleteAccountArgs) -> (DeleteAccountResponse);
+    set_social_links: (SetSocialLinksArgs) -> (SetSocialLinksResponse);
+
+    // mute/unmute user
+    mute_user: (MuteUserArgs) -> (MuteUserResponse);
+    unmute_user: (UnmuteUserArgs) -> (UnmuteUserResponse);
+
+    // This get current user's data.
+    current_user: (CurrentUserArgs) -> (CurrentUserResponse) query;
+
+    // user: (UserArgs) -> (UserResponse) query;
+
+    // follow/unfollow user.
+    follow_user: (FollowUserArgs) -> (FollowUserResponse);
+    unfollow_user: (UnfollowUserArgs) -> (UnfollowUserResponse);
+
+    // add/remove block user
+    add_block_user: (AddBlockUserArgs) -> (AddBlockUserResponse);
+    remove_block_user: (RemoveBlockUserArgs) -> (RemoveBlockUserResponse);
+
+    // add follow request
+    follow_request: (FollowRequestArgs) -> (FollowRequestResponse);
+}
