@@ -1,14 +1,14 @@
 use candid::{CandidType, Principal};
 use serde::Deserialize;
-use types::NobleId;
+use types::{NobleId, CanisterId};
 
 #[derive(CandidType, Deserialize, Debug)]
 pub struct Args {
     pub caller: Principal,
     pub noble_id: NobleId,
+    pub canister_id: CanisterId,
     pub email: String,
     pub username: String,
-    pub password_hash: String,
 }
 
 #[derive(CandidType, Deserialize, Debug, PartialEq, Eq)]

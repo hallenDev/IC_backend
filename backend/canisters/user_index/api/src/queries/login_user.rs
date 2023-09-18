@@ -1,6 +1,6 @@
 use candid::CandidType;
 use serde::{Serialize, Deserialize};
-use types::CanisterId;
+use types::SuccessLogin;
 
 #[derive(CandidType, Serialize, Deserialize, Debug)]
 pub struct Args {
@@ -10,14 +10,8 @@ pub struct Args {
 
 #[derive(CandidType, Serialize, Deserialize, Debug)]
 pub enum Response {
-    Success(SuccessResult),
+    Success(SuccessLogin),
     UnregisteredUser,
     EmailOrPasswordIncorrect,
     InternalError(String),
-}
-
-#[derive(CandidType, Serialize, Deserialize, Debug)]
-pub struct SuccessResult {
-    pub canister_id: CanisterId,
-    pub jwt: String,
 }

@@ -1,10 +1,13 @@
 mod router;
+mod logs_handler;
+pub mod images;
 
 use serde::Serialize;
 use serde_bytes::ByteBuf;
 use types::{HeaderField, HttpResponse};
 
 pub use router::*;
+pub use logs_handler::*;
 
 pub fn build_json_response<T: Serialize>(body: &T) -> HttpResponse {
     let bytes = serde_json::to_string(body).unwrap().into_bytes();

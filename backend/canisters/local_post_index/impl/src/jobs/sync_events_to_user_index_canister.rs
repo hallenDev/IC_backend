@@ -10,7 +10,6 @@ thread_local! {
     static TIMER_ID: Cell<Option<TimerId>> = Cell::default();
 }
 
-#[allow(dead_code)]
 pub(crate) fn start_job_if_required(state: &RuntimeState) -> bool {
     // ic_cdk::println!("start_job_if_required");
     if TIMER_ID.with(|t| t.get().is_none())

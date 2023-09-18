@@ -1,5 +1,6 @@
 use crate::model::user::User;
 use candid::Principal;
+use rand::{Rng, rngs::StdRng};
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use types::{NobleId, CanisterId, TimestampMillis};
@@ -28,6 +29,18 @@ impl UserMap {
         self.users.get(&noble_id)
     }
 
+    pub fn get_mut(&mut self, noble_id: NobleId) -> Option<&mut User> {
+        self.users.get_mut(&noble_id)
+    }
+
+    pub fn new_noble_id(&self, rnd: &mut StdRng) -> NobleId {
+        let mut noble_id = rnd.gen_range(1000000000u64..10000000000u64);
+        while self.users.get(&noble_id).is_some() {
+            noble_id = rnd.gen_range(1000000000u64..10000000000u64);
+        }
+        noble_id
+    }
+
     #[allow(dead_code)]
     pub fn get_canister_id_by_principal(&self, principal: &Principal) -> Option<&Principal> {
         let user = self.principal_to_noble_id.get(principal).and_then(|u| self.users.get(u));
@@ -45,16 +58,22 @@ impl UserMap {
         self.email_to_noble_id.get(email).and_then(|u| self.users.get(u))
     }
 
+    pub fn get_mut_by_email(&mut self, email: &str) -> Option<&mut User> {
+        self.email_to_noble_id.get(email).and_then(|u| self.users.get_mut(u))
+    }
+
     pub fn does_username_exist(&self, username: &str) -> bool {
         self.username_to_noble_id.contains_key(username)
     }
 
-    #[allow(dead_code)]
+    pub fn does_email_exist(&self, email: &str) -> bool {
+        self.email_to_noble_id.contains_key(email)
+    }
+
     pub fn get_by_username(&self, username: &str) -> Option<&User> {
         self.username_to_noble_id.get(username).and_then(|u| self.users.get(u))
     }
 
-    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.users.len()
     }
@@ -71,6 +90,7 @@ impl UserMap {
         noble_id: NobleId,
         email: String,
         username: String,
+        password: String,
         canister_id: CanisterId,
         now: TimestampMillis
     ) {
@@ -78,10 +98,21 @@ impl UserMap {
         self.principal_to_noble_id.insert(principal, noble_id);
         self.email_to_noble_id.insert(email.clone(), noble_id);
 
-        let user = User::new(principal, noble_id, email, username, canister_id, now);
+        let user = User::new(principal, noble_id, email, username, password, canister_id, now);
         self.users.insert(noble_id, user);
     }
 
+    pub fn update_username(&mut self, previous_username: String, username: String, noble_id: NobleId) {
+        self.username_to_noble_id.remove(&previous_username);
+        self.username_to_noble_id.insert(&username, noble_id);
+    }
+
+    pub fn update_email(&mut self, previous_email: String, email: String, noble_id: NobleId) {
+        self.email_to_noble_id.remove(&previous_email);
+        self.email_to_noble_id.insert(email, noble_id);
+    }
+
+    #[allow(dead_code)]
     pub fn update(&mut self, user: User) -> UpdateUserResult {
         let noble_id = user.noble_id;
 
@@ -128,6 +159,7 @@ impl UserMap {
             user.noble_id,
             user.email.clone(),
             user.username.clone(),
+            user.password.clone(),
             user.canister_id,
             user.date_created,
         );
@@ -147,7 +179,7 @@ impl From<UserMapTrimmed> for UserMap {
             ..Default::default()
         };
 
-        for (noble_id, user) in user_map.users.iter() {
+        for (noble_id, user) in user_map.users.iter_mut() {
             user_map.username_to_noble_id.insert(&user.username, *noble_id);
             user_map.principal_to_noble_id.insert(user.principal, *noble_id);
             user_map.email_to_noble_id.insert(user.email.clone(), *noble_id);

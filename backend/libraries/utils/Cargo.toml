@@ -7,8 +7,12 @@ edition = "2021"
 
 [dependencies]
 candid = { workspace = true }
+email_address = { workspace = true }
 getrandom = { workspace = true, features = ["custom"] }
 ic-cdk = { workspace = true }
+itertools = { workspace = true }
 rand = { workspace = true }
+tracing = { workspace = true }
 types = { path = "../types" }
 serde = { workspace = true }
+url = { workspace = true }

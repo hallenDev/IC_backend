@@ -1,6 +1,9 @@
 type Empty = record {};
 type NobleId = nat64;
+type AvatarId = nat64;
+type PostId = nat64;
 type TimestampMillis = nat64;
+type CanisterId = principal;
 
 type PreferredPronouns = variant {
     SheHer;
@@ -11,154 +14,51 @@ type PreferredPronouns = variant {
 };
 
 type AccountPrivacy = variant {
-    AnyBodyCanView;
-    ApprovedFollowersCanView;
+    Everyone;
+    ApprovedFollowers;
     OnlyMe;
 };
 
-type CheckPasswordArgs = record {
-    jwt: text;
-    password: text;
+type Country = variant {
+    AD; AE; AF; AG; AI; AL; AM; AN; AO; AQ; AR; AS; AT; AU; AW; AZ; BA; BB; BD; BE; BF; BG; BH; BI; BJ; BM; BN; BO; BR; BS;
+    BT; BV; BW; BY; BZ; CA; CC; CD; CF; CG; CH; CI; CK; CL; CM; CN; CO; CR; CU; CV; CX; CY; CZ; DE; DJ; DK; DM; DO; DZ; EC;
+    EE; EG; EH; ER; ES; ET; FI; FJ; FK; FM; FO; FR; GA; GB; GD; GE; GF; GG; GH; GI; GL; GM; GN; GP; GQ; GR; GS; GT; GU; GW;
+    GY; GZ; HK; HM; HN; HR; HT; HU; ID; IE; IL; IM; IN; IO; IQ; IR; IS; IT; JE; JM; JO; JP; KE; KG; KH; KI; KM; KN; KP; KR;
+    KW; KY; KZ; LA; LB; LC; LI; LK; LR; LS; LT; LU; LV; LY; MA; MC; MD; ME; MG; MH; MK; ML; MM; MN; MO; MP; MQ; MR; MS; MT;
+    MU; MV; MW; MX; MY; MZ; NA; NC; NE; NF; NG; NI; NL; NO; NP; NR; NU; NZ; OM; PA; PE; PF; PG; PH; PK; PL; PM; PN; PR; PS;
+    PT; PW; PY; QA; RE; RO; RS; RU; RW; SA; SB; SC; SD; SE; SG; SH; SI; SJ; SK; SL; SM; SN; SO; SR; ST; SV; SY; SZ; TC; TD;
+    TF; TG; TH; TJ; TK; TL; TM; TN; TO; TR; TT; TV; TW; TZ; UA; UG; UM; US; UY; UZ; VA; VC; VE; VG; VI; VN; VU; WF; WS; XK;
+    YE; YT; ZA; ZM; ZW;
 };
 
-type CheckPasswordResponse = variant {
-    Success;
-    PermissionDenied;
-    UserNotFound;
-    Error;
+type Gender = variant {
+    Male; Female;
+};
+
+type AcademicDegree = variant {
+    AA; AS; BVetMed; BA; BEng; BFA; BS; Mphil; PhD; GED; HS; Lic; MA; MFA; MRes; MS; MDPhD; MD; Other;
 };
 
 type FollowingUser = record {
-    noble_id: NobleId;
-    is_muted: bool;
+    noble_id : NobleId;
+    is_muted : bool;
 };
 
 type Follower = record {
+    noble_id : NobleId;
+    is_approved : bool;
+};
+
+type UserInfo = record {
     noble_id: NobleId;
-    is_approved: bool;
-};
-
-type CurrentUserArgs = record {
-    jwt: text;
-};
-
-type CurrentUserResponse = variant {
-    Success: record {
-        noble_id: NobleId;
-        username: text;
-        first_name: text;
-        last_name: text;
-        country: text;
-        city: text;
-        preferred_pronouns: opt PreferredPronouns;
-        photo: vec nat8;
-        email: text;
-        search_by_email: bool;
-        bio: text;
-        account_privacy: AccountPrivacy;
-
-        linkedin_handle: text;
-        twitter_handle: text;
-        mastodon_handle: text;
-        github_handle: text;
-        facebook_handle: text;
-        personal_website: text;
-
-        followers: vec Follower;
-        following_list: vec  FollowingUser;
-        block_users: vec NobleId;
-
-        date_created: TimestampMillis;
-        date_updated: TimestampMillis;
-    };
-    UserNotFound;
-    PermissionDenied;
-};
-
-type SetNameArgs = record {
-    jwt: text;
+    canister_id: CanisterId;
+    username: text;
     first_name: text;
     last_name: text;
 };
 
-type SetNameResponse = variant {
-    Success;
-    InputIsInvalid;
-    UserNotFound;
-    PermissionDenied;
-};
-
-type SetBioArgs = record {
-    jwt: text;
-    bio: text;
-};
-
-type SetBioResponse = variant {
-    Success;
-    UserNotFound;
-    BioTooLong: nat32;
-    PermissionDenied;
-};
-
-type SetPhotoArgs = record {
-    jwt: text;
-    photo: vec nat8;
-};
-
-type SetPhotoResponse = variant {
-    Success;
-    UserNotFound;
-    PhotoTooBig: nat32;
-    PermissionDenied;
-};
-
-type SetLocationArgs = record {
-    jwt: text;
-    country: text;
-    city: text;
-};
-
-type SetLocationResponse = variant {
-    Success;
-    UserNotFound;
-    PermissionDenied;
-};
-
-type SetPreferredPronounsArgs = record {
-    jwt: text;
-    preferred_pronouns: opt PreferredPronouns;
-};
-
-type SetPreferredPronounsResponse = variant {
-    Success;
-    UserNotFound;
-    PermissionDenied;
-};
-
-type SetSearchByEmailArgs = record {
-    jwt: text;
-    search_by_email: bool;
-};
-
-type SetSearchByEmailResponse = variant {
-    Success;
-    UserNotFound;
-    PermissionDenied;
-};
-
-type SetAccountPrivacyArgs = record {
-    jwt: text;
-    account_privacy: AccountPrivacy;
-};
-
-type SetAccountPrivacyResponse = variant {
-    Success;
-    UserNotFound;
-    PermissionDenied;
-};
-
 type DeleteAccountArgs = record {
-    jwt: text;
+    jwt : text;
 };
 
 type DeleteAccountResponse = variant {
@@ -167,33 +67,9 @@ type DeleteAccountResponse = variant {
     PermissionDenied;
 };
 
-type SetSocialLinksArgs = record {
-    jwt: text;
-    linkedin_handle: text;
-    twitter_handle: text;
-    mastodon_handle: text;
-    github_handle: text;
-    facebook_handle: text;
-    personal_website: text;
-};
-
-type SetSocialLinksResponse = variant {
-    Success;
-    UserNotFound;
-    Error: record {
-        linkedin_handle: text;
-        twitter_handle: text;
-        mastodon_handle: text;
-        github_handle: text;
-        facebook_handle: text;
-        personal_website: text;
-    };
-    PermissionDenied;
-};
-
 type MuteUserArgs = record {
-    jwt: text;
-    noble_id: NobleId;
+    jwt : text;
+    noble_id : NobleId;
 };
 
 type MuteUserResponse = variant {
@@ -205,8 +81,8 @@ type MuteUserResponse = variant {
 };
 
 type UnmuteUserArgs = record {
-    jwt: text;
-    noble_id: NobleId;
+    jwt : text;
+    noble_id : NobleId;
 };
 
 type UnmuteUserResponse = variant {
@@ -216,144 +92,357 @@ type UnmuteUserResponse = variant {
     PermissionDenied;
 };
 
-type SetUsernameArgs = record {
-    jwt: text;
+type GetUserArgs = record {
+    jwt : text;
+    noble_id : NobleId;
+};
+
+type UserDetail = record {
+    noble_id: NobleId;
+    local_user_canister_id: CanisterId;
+    avatar_id: AvatarId;
     username: text;
-};
+    first_name: text;
+    last_name: text;
+    gender: opt Gender;
+    preferred_pronouns: opt PreferredPronouns;
+    country: opt Country;
+    city: text;
+    degree: opt AcademicDegree;
 
-type SetUsernameResponse = variant {
-    Success;
-    UsernameTaken;
-    UserNotFound;
-    UsernameInvalid;
-    UsernameTooShort: nat16;
-    UsernameTooLong: nat16;
-    PermissionDenied;
-    InternalError: text;
-};
-
-type SetEmailArgs = record {
-    jwt: text;
     email: text;
+    bio: text;
+
+    // social links
+    linkedin_handle: text;
+    twitter_handle: text;
+    mastodon_handle: text;
+    github_handle: text;
+    facebook_handle: text;
+    personal_website: text;
+
+    followers_count: nat32;
+    following_count: nat32;
+    follow_state: bool;
+
+    date_created: TimestampMillis;
+    date_updated: TimestampMillis;
 };
 
-type SetEmailResponse = variant {
-    Success;
+type GetUserResponse = variant {
+    Success : UserDetail;
     PermissionDenied;
-    EmailIsInvalid;
     UserNotFound;
-    EmailAlreadyExist;
-    InternalError: text;
+    InternalError : text;
 };
 
 type FollowUserArgs = record {
-    jwt: text;
-    noble_id: NobleId;
+    jwt : text;
+    noble_id : NobleId;
 };
 
 type FollowUserResponse = variant {
     Success;
     AlreadyFollowing;
     UserNotFound;
-    InternalError: text;
+    InternalError : text;
     PermissionDenied;
 };
 
 type UnfollowUserArgs = record {
-    jwt: text;
-    noble_id: NobleId;
+    jwt : text;
+    noble_id : NobleId;
 };
 
 type UnfollowUserResponse = variant {
     Success;
     UserNotFound;
-    InternalError: text;
+    InternalError : text;
     PermissionDenied;
 };
 
 type AddBlockUserArgs = record {
-    jwt: text;
-    noble_id: NobleId;
+    jwt : text;
+    noble_id : NobleId;
 };
 
 type AddBlockUserResponse = variant {
     Success;
     AlreadyBlocked;
     UserNotFound;
-    InternalError: text;
+    InternalError : text;
     PermissionDenied;
 };
 
 type RemoveBlockUserArgs = record {
-    jwt: text;
-    noble_id: NobleId;
+    jwt : text;
+    noble_id : NobleId;
 };
 
 type RemoveBlockUserResponse = variant {
     Success;
     BlockUserNotFound;
     UserNotFound;
-    InternalError: text;
+    InternalError : text;
     PermissionDenied;
 };
 
 type FollowRequestArgs = record {
-    jwt: text;
-    noble_id: NobleId;
+    jwt : text;
+    noble_id : NobleId;
 };
 
 type FollowRequestResponse = variant {
     Success;
     UserNotFound;
     UnfollowState;
-    InternalError: text;
+    InternalError : text;
     PermissionDenied;
+};
+
+type SetProfileArgs = record {
+    jwt : text;
+    first_name : text;
+    last_name : text;
+    gender : opt Gender;
+    degree : opt AcademicDegree;
+    bio : text;
+    personal_website : text;
+    country : opt Country;
+    city : text;
+    preferred_pronouns : opt PreferredPronouns;
+    linkedin_handle : text;
+    twitter_handle : text;
+    mastodon_handle : text;
+    github_handle : text;
+    facebook_handle : text;
+};
+
+type SetProfileResponse = variant {
+    Success: AvatarId;
+    PermissionDenied;
+    UserNotFound;
+    Error : record {
+        first_name : text;
+        last_name : text;
+        bio : text;
+        personal_website : text;
+        city : text;
+        linkedin_handle : text;
+        twitter_handle : text;
+        mastodon_handle : text;
+        github_handle : text;
+        facebook_handle : text;
+        degree : text;
+        country : text;
+        preferred_pronouns : text;
+    };
+};
+type GetProfileArgs = record {
+    jwt : text;
+};
+
+type GetProfileResponse = variant {
+    Success : record {
+        first_name : text;
+        last_name : text;
+        gender : opt Gender;
+        degree : opt AcademicDegree;
+        bio : text;
+        personal_website : text;
+        country : opt Country;
+        city : text;
+        preferred_pronouns : opt PreferredPronouns;
+        linkedin_handle : text;
+        twitter_handle : text;
+        mastodon_handle : text;
+        github_handle : text;
+        facebook_handle : text;
+    };
+    PermissionDenied;
+    UserNotFound;
+};
+
+type GetAccountArgs = record {
+    jwt: text;
+};
+
+type GetAccountResponse = variant {
+    Success: record {
+        username: text;
+        email: text;
+        search_by_email: bool;
+        account_privacy: AccountPrivacy;
+    };
+    PermissionDenied;
+    UserNotFound;
+};
+
+type SetAccountArgs = record {
+    jwt: text;
+    username: text;
+    email: text;
+    search_by_email: bool;
+    account_privacy: AccountPrivacy;
+};
+
+type SetAccountResponse = variant {
+    Success;
+    PermissionDenied;
+    UserNotFound;
+    Error: record {
+        username: text;
+        email: text;
+    };
+    InternalError: text;
+};
+
+type GetFollowersArgs = record {
+    jwt: text;
+    noble_id: opt NobleId;
+};
+
+type GetFollowersResponse = variant {
+    Success: vec NobleId;
+    PermissionDenied;
+    UserNotFound;
+};
+
+type GetFollowingListArgs = GetFollowersArgs;
+type GetFollowingListResponse = GetFollowersResponse;
+
+type GetBlockUsersArgs = GetFollowersArgs;
+type GetBlockUsersResponse = GetFollowersResponse;
+
+type GetBlockMeUsersArgs = GetFollowersArgs;
+type GetBlockMeUsersResponse = GetFollowersResponse;
+
+type SetPhotoArgs = record {
+    jwt: text;
+    photo: vec nat8;
+};
+
+type SetPhotoResponse = variant {
+    Success : AvatarId;
+    PermissionDenied;
+    UserNotFound;
+    Error : record {
+        photo: text;
+    };
+    InternalError : text;
+};
+
+type GetLikedPostsArgs = record {
+    jwt: text;
+    noble_id: opt NobleId;
+};
+
+type GetLikedPostsResponse = variant {
+    Success: vec PostId;
+    PermissionDenied;
+    UserNotFound;
+};
+
+type AddBookmarkArgs = record {
+    jwt: text;
+    post_id: PostId;
+};
+
+type AddBookmarkResponse = variant {
+    Success;
+    PermissionDenied;
+    AlreadyBookmarked;
+    PostNotFound;
+    UserNotFound;
+    InternalError: text;
+};
+
+type RemoveBookmarkArgs = record {
+    jwt: text;
+    post_id: PostId;
+};
+
+type RemoveBookmarkResponse = variant {
+    Success;
+    PermissionDenied;
+    BookmarkNotFound;
+    UserNotFound;
+};
+
+type GetBookmarksArgs = record{
+    jwt: text;
+    noble_id: opt NobleId;
+};
+
+type GetBookmarksResponse = variant {
+    Success: vec PostId;
+    PermissionDenied;
+    UserNotFound;
+};
+
+type GetUserDataArgs = record {
+    jwt: text;
+    noble_id: opt NobleId;
+    mask: nat32;
+};
+
+type GetUserDataResponse = variant {
+    Success: record {
+        block_me_users: vec NobleId;
+        following_list: vec NobleId;
+        bookmarks: vec PostId;
+        liked_posts: vec PostId;
+    };
+    PermissionDenied;
+    UserNotFound;
+};
+
+type Version = record {
+    major: nat32;
+    minor: nat32;
+    patch: nat32;
 };
 
 type InitArgs = record {
     user_index_canister_id : principal;
     post_index_canister_id : principal;
+    local_post_index_canister_ids : vec principal;
+    super_admin: principal;
+    wasm_version: Version;
 };
 
-service: (args: InitArgs) -> {
-    // register_user: (RegisterUserArgs) -> (RegisterUserResponse);
+service : (args : InitArgs) -> {
+    get_profile : (GetProfileArgs) -> (GetProfileResponse) query;
+    set_profile : (SetProfileArgs) -> (SetProfileResponse);
 
-    // This check user's password whether it is correct
-    // check_password: (CheckPasswordArgs) -> (CheckPasswordResponse) query;
+    get_account : (GetAccountArgs) -> (GetAccountResponse) query;
+    set_account : (SetAccountArgs) -> (SetAccountResponse);
+    delete_account : (DeleteAccountArgs) -> (DeleteAccountResponse);
 
-    // apis to update user profile
-    set_username : (SetUsernameArgs) -> (SetUsernameResponse);
-    set_email : (SetEmailArgs) -> (SetEmailResponse);
-    set_name: (SetNameArgs) -> (SetNameResponse);
-    set_photo: (SetPhotoArgs) -> (SetPhotoResponse);
-    set_bio: (SetBioArgs) -> (SetBioResponse);
-    // -> set location(country, city).
-    set_location: (SetLocationArgs) -> (SetLocationResponse);
-    set_preferred_pronouns: (SetPreferredPronounsArgs) -> (SetPreferredPronounsResponse);
-    // -> enable/disable feature anyone can search you by email
-    set_search_by_email: (SetSearchByEmailArgs) -> (SetSearchByEmailResponse);
-    // -> public/private your account
-    set_account_privacy: (SetAccountPrivacyArgs) -> (SetAccountPrivacyResponse);
-    delete_account: (DeleteAccountArgs) -> (DeleteAccountResponse);
-    set_social_links: (SetSocialLinksArgs) -> (SetSocialLinksResponse);
+    mute_user : (MuteUserArgs) -> (MuteUserResponse);
+    unmute_user : (UnmuteUserArgs) -> (UnmuteUserResponse);
 
-    // mute/unmute user
-    mute_user: (MuteUserArgs) -> (MuteUserResponse);
-    unmute_user: (UnmuteUserArgs) -> (UnmuteUserResponse);
+    get_user : (GetUserArgs) -> (GetUserResponse) query;
 
-    // This get current user's data.
-    current_user: (CurrentUserArgs) -> (CurrentUserResponse) query;
+    follow_user : (FollowUserArgs) -> (FollowUserResponse);
+    unfollow_user : (UnfollowUserArgs) -> (UnfollowUserResponse);
 
-    // user: (UserArgs) -> (UserResponse) query;
+    add_block_user : (AddBlockUserArgs) -> (AddBlockUserResponse);
+    remove_block_user : (RemoveBlockUserArgs) -> (RemoveBlockUserResponse);
 
-    // follow/unfollow user.
-    follow_user: (FollowUserArgs) -> (FollowUserResponse);
-    unfollow_user: (UnfollowUserArgs) -> (UnfollowUserResponse);
+    follow_request : (FollowRequestArgs) -> (FollowRequestResponse);
 
-    // add/remove block user
-    add_block_user: (AddBlockUserArgs) -> (AddBlockUserResponse);
-    remove_block_user: (RemoveBlockUserArgs) -> (RemoveBlockUserResponse);
+    get_followers : (GetFollowersArgs) -> (GetFollowersResponse) query;
+    get_following_list : (GetFollowingListArgs) -> (GetFollowingListResponse) query;
+    get_block_users : (GetBlockUsersArgs) -> (GetBlockUsersResponse) query;
+    get_block_me_users : (GetBlockMeUsersArgs) -> (GetBlockMeUsersResponse) query;
+    get_liked_posts : (GetLikedPostsArgs) -> (GetLikedPostsResponse) query;
 
-    // add follow request
-    follow_request: (FollowRequestArgs) -> (FollowRequestResponse);
-}
+    add_bookmark : (AddBookmarkArgs) -> (AddBookmarkResponse);
+    remove_bookmark : (RemoveBookmarkArgs) -> (RemoveBookmarkResponse);
+    get_bookmarks : (GetBookmarksArgs) -> (GetBookmarksResponse) query;
+
+    set_photo : (SetPhotoArgs) -> (SetPhotoResponse);
+
+    get_user_data : (GetUserDataArgs) -> (GetUserDataResponse) query;
+};

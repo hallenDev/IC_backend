@@ -47,7 +47,7 @@ mod tests {
 
         assert_eq!(runtime_state.data.users.len(), 9);
 
-        let jwt = JWT::new(1, "".to_string(), "".to_string(), runtime_state.env.now());
+        let jwt = JWT::new_for_test(1, runtime_state.env.now());
         let args = Args {
             jwt: jwt.to_string().unwrap(),
         };

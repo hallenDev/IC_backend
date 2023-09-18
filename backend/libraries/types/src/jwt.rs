@@ -1,23 +1,26 @@
+use candid::Principal;
 use serde::{Deserialize, Serialize};
-// use jwt_simple::prelude::*;
+use magic_crypt::{MagicCryptTrait, MagicCrypt256};
 
-use crate::{NobleId, TimestampMillis};
+use crate::{NobleId, TimestampMillis, CanisterId};
 
-pub const EXP_TIME: u64 = 60 * 60 * 1_000; // 1 hour
+pub const EXP_TIME: u64 = 3 * 24 * 60 * 60 * 1_000; // 3 days
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct JWT {
-    pub noble_id: NobleId,
-    pub email: String,
-    pub username: String,
     pub iat: u64,
     pub exp: u64,
+    pub noble_id: NobleId,
+    pub local_canister_id: CanisterId,
+    pub email: String,
+    pub username: String,
 }
 
 impl JWT {
-    pub fn new(noble_id: NobleId, email: String, username: String, iat: u64) -> Self {
+    pub fn new(noble_id: NobleId, local_canister_id: CanisterId, email: String, username: String, iat: u64) -> Self {
         Self {
             noble_id,
+            local_canister_id,
             email,
             username,
             iat,
@@ -25,42 +28,41 @@ impl JWT {
         }
     }
 
-    // pub fn get_key_pair() -> Option<Ed25519KeyPair> {
-    //     let key: [u8; 64] = [73, 19, 226, 209, 207, 251, 30, 214, 192, 187, 171, 4, 246, 152, 187, 146, 48, 153, 244, 235, 243, 43, 9, 10, 47, 197, 136, 108, 47, 236, 97, 103, 172, 7, 158, 232, 111, 153, 186, 100, 
-    //     145, 241, 219, 121, 235, 214, 154, 234, 102, 14, 182, 197, 214, 212, 16, 122, 15, 37, 144, 7, 156, 80, 34, 42];
-    //     match Ed25519KeyPair::from_bytes(&key) {
-    //         Ok(ok) => Some(ok),
-    //         Err(_) => return None,
-    //     }
-    // }
+    pub fn new_for_test(noble_id: NobleId, now: TimestampMillis) -> Self {
+        Self {
+            noble_id,
+            iat: now,
+            exp: now + EXP_TIME,
+            ..Default::default()
+        }
+    }
+
+    pub fn get_key() -> &'static str {
+        "magickey2"
+    }
 
     pub fn to_string(&self) -> Option<String> {
-        Some(serde_json::to_string(self).unwrap())
-        // let key_pair = JWT::get_key_pair()?;
-
-        // // create claims valid for 1 hour
-        // let claims = Claims::with_custom_claims(self.clone(), Duration::from_secs(EXP_TIME));
-
-        // match key_pair.sign(claims) {
-        //     Ok(ok) => return Some(ok),
-        //     Err(_) => return None,
-        // }
+        match serde_json::to_string(self) {
+            Ok(ok) => {
+                let mcrypt = MagicCrypt256::new(Self::get_key(), None::<String>);
+                let encrypted_string = mcrypt.encrypt_str_to_base64(&ok);
+                Some(encrypted_string.trim_end_matches("=").to_string())
+            },
+            Err(_) => None,
+        }
     }
 
     pub fn from_string(token: &str) -> Option<Self> {
-        match serde_json::from_str(token) {
-            Ok(ok) => Some(ok),
+        let mcrypt = MagicCrypt256::new(Self::get_key(), None::<String>);
+        match mcrypt.decrypt_base64_to_string(token) {
+            Ok(ok) => {
+                match serde_json::from_str(&ok) {
+                    Ok(ok) => Some(ok),
+                    Err(_) => None,
+                }
+            },
             Err(_) => None,
         }
-        // let key_pair = JWT::get_key_pair()?;
-
-        // // a public key can be extracted from a key pair:
-        // let public_key = key_pair.public_key();
-
-        // match public_key.verify_token::<Self>(&token, None) {
-        //     Ok(ok) => Some(ok.custom),
-        //     Err(_) => return None,
-        // }
     }
 
     pub fn is_expired(&self, now: TimestampMillis) -> bool {
@@ -76,5 +78,18 @@ pub fn check_jwt(str: &str, now: TimestampMillis) -> Option<JWT> {
         return Some(jwt);
     } else {
         return None;
+    }
+}
+
+impl Default for JWT {
+    fn default() -> Self {
+        JWT {
+            iat: 0,
+            exp: 0,
+            noble_id: 0,
+            local_canister_id: Principal::anonymous(),
+            email: "".to_string(),
+            username: "".to_string(),
+        }
     }
 }

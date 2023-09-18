@@ -1,9 +1,246 @@
 type CanisterId = principal;
+type TimestampMillis = nat64;
+type NobleId = nat64;
+type PostId = nat64;
+type FileId = nat;
+type CommentId = nat32;
+type PostPrivacy = variant {
+    Everyone;
+    Followers;
+    SpecificUsers;
+};
+
+type GetPostArgs = record {
+    jwt: text;
+    post_id: PostId;
+    limit: nat32;
+    following_list: vec NobleId;
+    block_me_users: vec NobleId;
+    bookmarks: vec PostId;
+};
+
+type Category = variant {
+    GeneralDiscussion;
+    Questions;
+    IntroduceYourself;
+    UserFeedback;
+};
+
+type PostDetail = record {
+    post_id: PostId;
+    noble_id: NobleId;
+    title: text;
+    description: text;
+    category: Category;
+    link_url: text;
+    video_url: text;
+    attached_file_id: FileId;
+    liked_users_count: nat32;
+    comments_count: nat32;
+
+    date_created: TimestampMillis;
+    date_updated: TimestampMillis;
+    date_last_commented: TimestampMillis;
+    like_state: bool;
+    bookmark_state: bool;
+};
+
+type CommentDetail = record {
+    noble_id: NobleId;
+    comment_id: CommentId;
+    parent_comment_id: CommentId;
+    description: text;
+    liked_users_count: nat32;
+    comments_count: nat32;
+    date_created: TimestampMillis;
+    like_state: bool;
+    loading_like: bool;
+    loading_delete: bool;
+};
+
+type GetPostResponse = variant {
+    Success: record {
+        post: PostDetail;
+        comments: vec CommentDetail;
+        more_exist: bool;
+    };
+    PermissionDenied;
+    PostNotFound;
+};
+
+type NewCommentArgs = record {
+    jwt: text;
+    post_id: PostId;
+    comment_id: CommentId;
+    description: text;
+};
+
+type NewCommentResponse = variant {
+    Success: record {
+        comment_id: CommentId;
+        parent_comment_id: CommentId;
+    };
+    Error: record {
+        description: text;
+    };
+    PermissionDenied;
+    PostNotFound;
+    CommentNotFound;
+};
+
+type LikeCommentArgs = record {
+    jwt: text;
+    post_id: PostId;
+    comment_id: CommentId;
+};
+
+type LikeCommentResponse = variant {
+    Success;
+    AlreadyLiked;
+    PermissionDenied;
+    PostNotFound;
+    CommentNotFound;
+};
+
+type UnlikeCommentArgs = record {
+    jwt: text;
+    post_id: PostId;
+    comment_id: CommentId;
+};
+
+type UnlikeCommentResponse = variant {
+    Success;
+    UserNotFound;
+    PermissionDenied;
+    PostNotFound;
+    CommentNotFound;
+};
+
+type DeleteCommentArgs = record {
+    jwt: text;
+    post_id: PostId;
+    comment_id: CommentId;
+};
+
+type DeleteCommentResponse = variant {
+    Success: record {
+        post_id: PostId;
+        comment_id: CommentId;
+    };
+    PermissionDenied;
+    PostNotFound;
+    CommentNotFound;
+};
+
+type EditCommentArgs = record {
+    jwt: text;
+    post_id: PostId;
+    comment_id: CommentId;
+    description: text;
+};
+
+type EditCommentResponse = variant {
+    Success;
+    Error: record {
+        description: text;
+    };
+    PermissionDenied;
+    PostNotFound;
+    CommentNotFound;
+};
+
+type EditPostArgs = record {
+    jwt: text;
+    post_id: PostId;
+    title: text;
+    description: text;
+    post_privacy: PostPrivacy;
+    invited_users: vec NobleId;
+};
+
+type EditPostResponse = variant {
+    Success;
+    Error: record {
+        title: text;
+        description: text;
+    };
+    PermissionDenied;
+    PostNotFound;
+};
+
+type GetLikeUserArgs = record {
+    jwt: text;
+    post_id: PostId;
+    comment_id: CommentId;
+    page: nat32;
+    limit: nat32;
+    following_list: vec NobleId;
+    block_me_users: vec NobleId;
+};
+
+type UserInfo = record {
+    noble_id: NobleId;
+    canister_id: CanisterId;
+    username: text;
+    first_name: text;
+    last_name: text;
+};
+
+type GetLikeUserResponse = variant {
+    Success: vec UserInfo;
+    PermissionDenied;
+    PostNotFound;
+    CommentNotFound;
+};
+
+type GetCommentsArgs = record {
+    jwt: text;
+    post_id: PostId;
+    comment_id: CommentId;
+    from: nat32;
+    limit: nat32;
+    following_list: vec NobleId;
+    block_me_users: vec NobleId;
+};
+
+type GetCommentsResponse = variant {
+    Success: record {
+        comments: vec CommentDetail;
+        more_exist: bool;
+    };
+    PermissionDenied;
+    PostNotFound;
+    CommentNotFound;
+};
+
+type Version = record {
+    major: nat32;
+    minor: nat32;
+    patch: nat32;
+};
 
 type InitArgs = record {
     user_index_canister_id: CanisterId;
     post_index_canister_id: CanisterId;
+    local_user_index_canister_ids: vec CanisterId;
+    super_admin: principal;
+    wasm_version: Version;
 };
 
 service: (args: InitArgs) -> {
+    get_post : (GetPostArgs) -> (GetPostResponse) query;
+
+    new_comment : (NewCommentArgs) -> (NewCommentResponse);
+
+    like_comment : (LikeCommentArgs) -> (LikeCommentResponse);
+    unlike_comment : (UnlikeCommentArgs) -> (UnlikeCommentResponse);
+    
+    delete_comment : (DeleteCommentArgs) -> (DeleteCommentResponse);
+
+    edit_post : (EditPostArgs) -> (EditCommentResponse);
+    edit_comment : (EditCommentArgs) -> (EditCommentResponse);
+
+    get_like_users : (GetLikeUserArgs) -> (GetLikeUserResponse) query;
+
+    get_comments : (GetCommentsArgs) -> (GetCommentsResponse) query;
 }

@@ -1,9 +1,16 @@
 use std::str::FromStr;
 
-use types::NobleId;
+use types::{NobleId, PostId, TimestampMillis, AvatarId};
 
 pub enum Route {
-    Avatar(Option<NobleId>),
+    Avatar(Option<AvatarId>),
+    Metrics,
+    Users(Option<usize>),
+    User(Option<NobleId>),
+    Posts(Option<usize>),
+    Post(Option<PostId>),
+    Logs(Option<TimestampMillis>),
+    Traces(Option<TimestampMillis>),
     Other(String, String),
 }
 
@@ -20,9 +27,34 @@ pub fn extract_route(path: &str) -> Route {
 
     match parts[0] {
         "avatar" => {
-            let blob_id = parts.get(1).and_then(|p| NobleId::from_str(p).ok());
+            let blob_id = parts.get(1).and_then(|p| AvatarId::from_str(p).ok());
             return Route::Avatar(blob_id);
+        },
+        "users" => {
+            let page = parts.get(1).and_then(|p| usize::from_str(p).ok());
+            return Route::Users(page)
         }
+        "user" => {
+            let blob_id = parts.get(1).and_then(|p| NobleId::from_str(p).ok());
+            return Route::User(blob_id);
+        },
+        "posts" => {
+            let page = parts.get(1).and_then(|p| usize::from_str(p).ok());
+            return Route::Posts(page)
+        }
+        "post" => {
+            let blob_id = parts.get(1).and_then(|p| PostId::from_str(p).ok());
+            return Route::Post(blob_id);
+        },
+        "logs" => {
+            let since = parts.get(1).and_then(|p| TimestampMillis::from_str(p).ok());
+            return Route::Logs(since);
+        }
+        "trace" => {
+            let since = parts.get(1).and_then(|p| TimestampMillis::from_str(p).ok());
+            return Route::Traces(since);
+        }
+        "metrics" => return Route::Metrics,
         _ => (),
     }
 

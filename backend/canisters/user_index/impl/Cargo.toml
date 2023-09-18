@@ -14,9 +14,11 @@ candid = { workspace = true }
 canister_api_macros = { path = "../../../libraries/canister_api_macros" }
 canister_logger = { path = "../../../libraries/canister_logger" }
 canister_state_macros = { path = "../../../libraries/canister_state_macros" }
-futures = { workspace = true }
-getrandom = { workspace = true }
 email_address = { workspace = true }
+futures = { workspace = true }
+getrandom = { workspace = true, features = ["custom"] }
+http_request = { path = "../../../libraries/http_request" }
+human_readable = { path = "../../../libraries/human_readable" }
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
 ic-cdk-timers = { workspace = true }
@@ -31,6 +33,8 @@ serializer = { path = "../../../libraries/serializer" }
 tracing = { workspace = true }
 types = { path = "../../../libraries/types" }
 url = { workspace = true }
+post_index_canister = { path = "../../post_index/api" }
+post_index_canister_c2c_client = { path = "../../post_index/c2c_client" }
 local_user_index_canister = { path = "../../local_user_index/api" }
 local_user_index_canister_c2c_client = { path = "../../local_user_index/c2c_client" }
 user_index_canister = { path = "../api" }

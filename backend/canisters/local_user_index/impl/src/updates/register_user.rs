@@ -21,9 +21,9 @@ fn register_user_impl(args: Args, state: &mut RuntimeState) -> Response {
         .register(
             args.caller,
             args.noble_id,
+            args.canister_id,
             args.email,
             args.username,
-            args.password_hash,
             now,
         );
 

@@ -1,22 +1,27 @@
 [workspace]
 members = [
+    "backend/canister_upgrader",
     "backend/canisters/user_index/api",
     "backend/canisters/user_index/c2c_client",
+    "backend/canisters/user_index/client",
     "backend/canisters/user_index/impl",
     "backend/canisters/local_user_index/api",
     "backend/canisters/local_user_index/c2c_client",
     "backend/canisters/local_user_index/impl",
     "backend/canisters/post_index/api",
     "backend/canisters/post_index/c2c_client",
+    "backend/canisters/post_index/client",
     "backend/canisters/post_index/impl",
     "backend/canisters/local_post_index/api",
     "backend/canisters/local_post_index/c2c_client",
     "backend/canisters/local_post_index/impl",
+    "backend/libraries/canister_agent_utils",
     "backend/libraries/canister_api_macros",
-    "backend/libraries/canister_client_macros",
     "backend/libraries/canister_client",
+    "backend/libraries/canister_client_macros",
     "backend/libraries/canister_logger",
     "backend/libraries/canister_state_macros",
+    "backend/libraries/canister_time",
     "backend/libraries/http_request",
     "backend/libraries/msgpack",
     "backend/libraries/serializer",
@@ -25,18 +30,24 @@ members = [
 ]
 
 [workspace.dependencies]
-candid = "0.9.3"
+candid = "0.9.5"
+clap = "4.3.4"
+dirs = "5.0.1"
 email_address = "0.2.4"
 futures = "0.3.28"
 getrandom = "0.2.10"
+ic-agent = "0.27.0"
 ic-cdk = "0.10.0"
 ic-cdk-macros = "0.7.0"
 ic-cdk-timers = "0.4.0"
 ic-stable-memory = "0.4.4"
 ic-stable-structures = "0.5.4"
+ic-utils = "0.27.0"
+ic0 = "0.18.11"
 itertools = "0.11.0"
 jwt-simple = "0.11.6"
 lzma-rs = "0.3.0"
+magic-crypt = "3.1.12"
 num-traits = "0.2.16"
 proc-macro2 = "1.0.66"
 quote = "1.0.32"
@@ -44,11 +55,13 @@ rand = "0.8.5"
 rand_core = "0.6.4"
 rmp-serde = "1.1.2"
 rust-argon2 = "1.0.0"
+sha2 = "0.10.6"
 serde = "1.0.181"
 serde_bytes = "0.11.12"
 serde_json = "1.0.104"
 serde_tokenstream = "0.2.0"
 syn = "2.0.28"
+tokio = "1.28.2"
 tracing = "0.1.37"
 tracing-attributes = "0.1.26"
 tracing-subscriber = "0.3.17"

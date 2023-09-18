@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use types::{CanisterId, CyclesTopUp, Version, PostId};
 
+use crate::LOCAL_POST_LIMIT;
+
 #[derive(CandidType, Serialize, Deserialize, Default)]
 pub struct LocalPostIndexMap {
     index_map: HashMap<CanisterId, LocalPostIndex>,
@@ -38,6 +40,23 @@ impl LocalPostIndexMap {
         if let Some(index) = self.index_map.get_mut(&index_id) {
             if self.post_to_index.insert(post_id, index_id).is_none() {
                 index.post_count += 1;
+                if index.post_count >= LOCAL_POST_LIMIT as u32 {
+                    index.mark_full();
+                }
+                return true;
+            }
+        }
+
+        false
+    }
+
+    pub fn remove_post(&mut self, index_id: CanisterId, post_id: PostId) -> bool {
+        if let Some(index) = self.index_map.get_mut(&index_id) {
+            if self.post_to_index.remove(&post_id).is_some() {
+                index.post_count -= 1;
+                if index.full == true && index.post_count < LOCAL_POST_LIMIT as u32 {
+                    index.mark_unfull();
+                }
                 return true;
             }
         }
@@ -53,17 +72,14 @@ impl LocalPostIndexMap {
             .map(|(k, _)| *k)
     }
 
-    #[allow(dead_code)]
     pub fn contains_key(&self, index_id: &CanisterId) -> bool {
         self.index_map.contains_key(index_id)
     }
 
-    #[allow(dead_code)]
     pub fn get(&self, index_id: &CanisterId) -> Option<&LocalPostIndex> {
         self.index_map.get(index_id)
     }
 
-    #[allow(dead_code)]
     pub fn get_mut(&mut self, index_id: &CanisterId) -> Option<&mut LocalPostIndex> {
         self.index_map.get_mut(index_id)
     }
@@ -78,29 +94,28 @@ impl LocalPostIndexMap {
         self.post_to_index.get(post_id).copied()
     }
 
-    #[allow(dead_code)]
     pub fn iter(&self) -> impl Iterator<Item = (&CanisterId, &LocalPostIndex)> {
         self.index_map.iter()
     }
 }
 
 impl LocalPostIndex {
-    #[allow(dead_code)]
     pub fn mark_cycles_top_up(&mut self, top_up: CyclesTopUp) {
         self.cycle_top_ups.push(top_up);
     }
 
-    #[allow(dead_code)]
     pub fn set_wasm_version(&mut self, wasm_version: Version) {
         self.wasm_version = wasm_version;
     }
 
-    #[allow(dead_code)]
     pub fn mark_full(&mut self) {
         self.full = true;
     }
 
-    #[allow(dead_code)]
+    pub fn mark_unfull(&mut self) {
+        self.full = false;
+    }
+
     pub fn wasm_version(&self) -> Version {
         self.wasm_version
     }

@@ -5,7 +5,7 @@ mod updates;
 
 pub use lifecycle::*;
 pub use queries::*;
-use types::NobleId;
+use types::{NobleId, PostId, CommentId, CanisterId};
 pub use updates::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -14,6 +14,35 @@ pub enum Event {
     UserUnfollowed(Box<FollowUser>),
     UserBlocked(Box<BlockUser>),
     UserUnblocked(Box<BlockUser>),
+    UsernameChanged(Box<UsernameChanged>),
+    CommentLiked(Box<CommentLiked>),
+    CommentUnliked(Box<CommentUnliked>),
+    LocalPostIndexCanisterAdded(Box<LocalPostIndexCanisterAdded>),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct LocalPostIndexCanisterAdded {
+    pub canister_id: CanisterId,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CommentUnliked {
+    pub noble_id: NobleId,
+    pub post_id: PostId,
+    pub comment_id: CommentId,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CommentLiked {
+    pub noble_id: NobleId,
+    pub post_id: PostId,
+    pub comment_id: CommentId,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct UsernameChanged {
+    pub noble_id: NobleId,
+    pub username: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -1,6 +1,6 @@
 use candid::CandidType;
 use serde::{Serialize, Deserialize};
-use types::{TimestampMillis, Category, PostSummary};
+use types::{TimestampMillis, Category, PostSummary, NobleId, PostId};
 
 #[derive(CandidType, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum Sort {
@@ -11,17 +11,20 @@ pub enum Sort {
 #[derive(CandidType, Serialize, Deserialize, Debug)]
 pub struct Args {
     pub jwt: String,
-    pub page: u32,
+    pub from: u32,
     pub limit: u32,
     pub category: Option<Category>,
     pub sort: Sort,
+    pub following_list: Vec<NobleId>,
+    pub block_me_users: Vec<NobleId>,
+    pub liked_posts: Vec<NobleId>,
+    pub bookmarks: Vec<PostId>,
 }
 
 #[derive(CandidType, Serialize, Deserialize, Debug)]
 pub enum Response {
     Success(SuccessResult),
     PermissionDenied,
-    InternalError(String),
 }
 
 #[derive(CandidType, Serialize, Deserialize, Debug)]

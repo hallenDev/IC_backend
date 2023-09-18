@@ -1,17 +1,22 @@
 use crate::lifecycle::{init_env, init_state};
 use crate::Data;
-use canister_logger::set_panic_hook;
 use ic_cdk_macros::init;
 use local_user_index_canister::init::Args;
+use tracing::info;
 
 #[init]
 fn init(args: Args) {
-    set_panic_hook();
+    canister_logger::init(false);
     let env = init_env();
 
-    let data = Data::new(args.user_index_canister_id, args.post_index_canister_id);
+    let data = Data::new(
+        args.user_index_canister_id,
+        args.post_index_canister_id,
+        args.local_post_index_canister_ids,
+        args.super_admin,
+    );
 
-    init_state(env, data);
+    init_state(env, data, args.wasm_version);
 
-    ic_cdk::println!("Initialization complete");
+    info!(version = %args.wasm_version, "Initialization complete");
 }

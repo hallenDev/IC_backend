@@ -1,13 +1,10 @@
-mod panic_hook;
-
-pub use panic_hook::set_panic_hook;
+// Inspired by https://github.com/dfinity/ic/blob/master/rs/rust_canisters/canister_log/src/lib.rs
 
 use candid::CandidType;
 use serde::{Deserialize, Serialize};
+use std::cell::{Cell, RefCell};
 use std::collections::VecDeque;
-use std::iter::FromIterator;
-use std::ops::Deref;
-use std::sync::{Arc, Mutex};
+use std::io::Write;
 use tracing::Level;
 use tracing_subscriber::fmt::format::{FmtSpan, Writer};
 use tracing_subscriber::fmt::time::FormatTime;
@@ -16,75 +13,121 @@ use tracing_subscriber::fmt::Layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::Registry;
-use types::TimestampMillis;
 
-const DEFAULT_MAX_MESSAGES: usize = 100;
+thread_local! {
+    static INITIALIZED: Cell<bool> = Cell::default();
+    static LOG: RefCell<LogBuffer> = RefCell::new(LogBuffer::default());
+    static TRACE: RefCell<LogBuffer> = RefCell::new(LogBuffer::default());
+}
 
-pub fn init_logger(enable_trace: bool, max_messages: Option<usize>, time_fn: fn() -> TimestampMillis) -> LogMessagesWrapper {
-    let log_messages_container = LogMessagesContainer::new(max_messages.unwrap_or(DEFAULT_MAX_MESSAGES));
-    let trace_messages_container = LogMessagesContainer::new(max_messages.unwrap_or(DEFAULT_MAX_MESSAGES));
-
-    let log_messages_wrapper = LogMessagesWrapper {
-        logs: log_messages_container.clone(),
-        traces: trace_messages_container.clone(),
-    };
-
-    let make_log_writer = move || LogWriter {
-        messages_container: log_messages_container.clone(),
-        time_fn,
-        buffer: Vec::new(),
-    };
-
-    let make_trace_writer = move || LogWriter {
-        messages_container: trace_messages_container.clone(),
-        time_fn,
-        buffer: Vec::new(),
-    };
-
-    let timer = Timer { time_fn };
+pub fn init(enable_trace: bool) {
+    if INITIALIZED.with(|i| i.replace(true)) {
+        panic!("Logger already initialized");
+    }
 
     let log_layer = Layer::default()
-        .with_writer(make_log_writer.with_max_level(Level::INFO))
-        .with_timer(timer.clone())
+        .with_writer((|| LogWriter::new(false)).with_max_level(Level::INFO))
         .json()
+        .with_timer(Timer {})
+        .with_file(true)
+        .with_line_number(true)
         .with_current_span(false)
         .with_span_list(false);
 
     if enable_trace {
         let trace_layer = Layer::default()
-            .with_writer(make_trace_writer)
-            .with_timer(timer)
-            .with_span_events(FmtSpan::ENTER)
+            .with_writer(|| LogWriter::new(true))
             .json()
-            .with_current_span(false);
+            .with_timer(Timer {})
+            .with_file(true)
+            .with_line_number(true)
+            .with_current_span(false)
+            .with_span_events(FmtSpan::ENTER);
 
         Registry::default().with(log_layer).with(trace_layer).init();
     } else {
         Registry::default().with(log_layer).init();
     }
-
-    log_messages_wrapper
 }
 
-#[derive(Default)]
-pub struct LogMessagesWrapper {
-    pub logs: LogMessagesContainer,
-    pub traces: LogMessagesContainer,
+pub fn init_with_logs(enable_trace: bool, logs: Vec<LogEntry>, traces: Vec<LogEntry>) {
+    init(enable_trace);
+
+    for log in logs {
+        LOG.with(|l| l.borrow_mut().append(log));
+    }
+    for trace in traces {
+        TRACE.with(|t| t.borrow_mut().append(trace));
+    }
+}
+
+/// A circular buffer for log messages.
+pub struct LogBuffer {
+    max_capacity: usize,
+    entries: VecDeque<LogEntry>,
+}
+
+impl LogBuffer {
+    /// Creates a new buffer of the specified max capacity.
+    pub fn with_capacity(max_capacity: usize) -> Self {
+        Self {
+            max_capacity,
+            entries: VecDeque::with_capacity(max_capacity),
+        }
+    }
+
+    /// Adds a new entry to the buffer, potentially evicting older entries.
+    pub fn append(&mut self, entry: LogEntry) {
+        while self.entries.len() >= self.max_capacity {
+            self.entries.pop_front();
+        }
+        self.entries.push_back(entry);
+    }
+
+    /// Returns an iterator over entries in the order of their insertion.
+    pub fn iter(&self) -> impl Iterator<Item = &LogEntry> {
+        self.entries.iter()
+    }
+}
+
+impl Default for LogBuffer {
+    fn default() -> Self {
+        LogBuffer {
+            max_capacity: 100,
+            entries: VecDeque::new(),
+        }
+    }
+}
+
+pub fn export_logs() -> Vec<LogEntry> {
+    LOG.with(|l| l.borrow().iter().cloned().collect())
+}
+
+pub fn export_traces() -> Vec<LogEntry> {
+    TRACE.with(|t| t.borrow().iter().cloned().collect())
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone)]
-pub struct LogMessage {
-    pub timestamp: TimestampMillis,
-    pub json: String,
+pub struct LogEntry {
+    pub timestamp: u64,
+    pub message: String,
 }
 
 struct LogWriter {
-    messages_container: LogMessagesContainer,
-    time_fn: fn() -> TimestampMillis,
+    trace: bool,
     buffer: Vec<u8>,
 }
 
-impl std::io::Write for LogWriter {
+impl LogWriter {
+    fn new(trace: bool) -> LogWriter {
+        LogWriter {
+            trace,
+            buffer: Vec::new(),
+        }
+    }
+}
+
+impl Write for LogWriter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         self.buffer.extend(buf);
         Ok(buf.len())
@@ -92,11 +135,15 @@ impl std::io::Write for LogWriter {
 
     fn flush(&mut self) -> std::io::Result<()> {
         let buffer = std::mem::take(&mut self.buffer);
+        let json = String::from_utf8(buffer).unwrap();
 
-        self.messages_container.push(LogMessage {
-            timestamp: (self.time_fn)(),
-            json: String::from_utf8(buffer).unwrap(),
-        });
+        let log_entry = LogEntry {
+            timestamp: canister_time::timestamp_millis(),
+            message: json,
+        };
+
+        let sink = if self.trace { &TRACE } else { &LOG };
+        sink.with(|s| s.borrow_mut().append(log_entry));
         Ok(())
     }
 
@@ -105,95 +152,12 @@ impl std::io::Write for LogWriter {
     }
 }
 
-// Provides shared access to the underlying log messages.
-#[derive(Clone, Default)]
-pub struct LogMessagesContainer {
-    container: Arc<Mutex<LogMessages>>,
-}
-
-impl LogMessagesContainer {
-    pub fn new(max_messages: usize) -> LogMessagesContainer {
-        LogMessagesContainer {
-            container: Arc::new(Mutex::new(LogMessages::new(max_messages))),
-        }
-    }
-
-    pub fn get(&self, since: TimestampMillis) -> Vec<LogMessage> {
-        self.container.deref().lock().unwrap().get(since)
-    }
-
-    pub fn push(&self, message: LogMessage) {
-        self.container.deref().lock().unwrap().push(message);
-    }
-
-    pub fn drain_messages(&self) -> Vec<LogMessage> {
-        let messages = &mut self.container.deref().lock().unwrap().messages;
-        Vec::from_iter(std::mem::take(messages))
-    }
-}
-
-#[derive(CandidType, Serialize, Deserialize, Default)]
-struct LogMessages {
-    max_messages: usize,
-    messages: VecDeque<LogMessage>,
-}
-
-impl LogMessages {
-    pub fn new(max_messages: usize) -> LogMessages {
-        LogMessages {
-            max_messages,
-            messages: VecDeque::new(),
-        }
-    }
-
-    pub fn get(&self, since: TimestampMillis) -> Vec<LogMessage> {
-        self.messages.iter().skip_while(|l| l.timestamp <= since).cloned().collect()
-    }
-
-    pub fn push(&mut self, message: LogMessage) {
-        while self.messages.len() >= self.max_messages {
-            self.messages.pop_front();
-        }
-        self.messages.push_back(message);
-    }
-}
-
-#[derive(Clone)]
-struct Timer {
-    time_fn: fn() -> TimestampMillis,
-}
+struct Timer;
 
 impl FormatTime for Timer {
     fn format_time(&self, w: &mut Writer) -> std::fmt::Result {
-        let now = (self.time_fn)();
+        let now = canister_time::timestamp_millis();
 
         w.write_str(&format!("{now}"))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tracing::{info, instrument};
-
-    #[test]
-    fn log_messages_can_be_accessed_outside_of_logger() {
-        let log_messages = init_logger(true, None, || 1);
-
-        info!("test!");
-
-        assert_eq!(1, log_messages.logs.drain_messages().len());
-        assert_eq!(1, log_messages.traces.drain_messages().len());
-
-        add_one(1);
-
-        assert_eq!(1, log_messages.logs.drain_messages().len());
-        assert_eq!(2, log_messages.traces.drain_messages().len());
-    }
-
-    #[instrument(level = "trace")]
-    fn add_one(value: u32) -> u32 {
-        info!("abc");
-        value + 1
     }
 }

@@ -1,5 +1,5 @@
 use candid::Principal;
-use rand::rngs::StdRng;
+use rand::{rngs::StdRng, Rng};
 use types::{CanisterId, Cycles, TimestampMillis, TimestampNanos};
 
 pub mod canister;
@@ -15,4 +15,8 @@ pub trait Environment {
     fn now(&self) -> TimestampMillis {
         self.now_nanos() / 1_000_000
     }
+}
+
+pub fn get_random_id(rng: &mut StdRng) -> u64 {
+    rng.gen_range(100_000_000_000_000_000u64..1_000_000_000_000_000_000u64)
 }

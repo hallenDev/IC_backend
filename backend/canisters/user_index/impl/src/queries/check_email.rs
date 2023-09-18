@@ -8,9 +8,17 @@ fn check_email(args: Args) -> Response {
 }
 
 fn check_email_impl(args: Args, state: &RuntimeState) -> Response {
-    if state.data.users.get_by_email(&args.email).is_some() {
-        EmailAlreadyExist
-    } else {
-        Success
+    if !email_address::EmailAddress::is_valid(&args.email) {
+        return EmailIsInvalid;
     }
+
+    if state.data.users.does_email_exist(&args.email) {
+        return EmailTaken;
+    }
+
+    if state.data.temps.does_email_exist(&args.email) {
+        return EmailTaken;
+    }
+
+    Success
 }

@@ -4,11 +4,6 @@ type PostId = nat64;
 type FileId = nat;
 type TimestampMillis = nat64;
 
-type InitArgs = record {
-    user_index_canister_id: CanisterId;
-    local_post_index_canister_ids: vec CanisterId;
-};
-
 type Category = variant {
     GeneralDiscussion;
     Questions;
@@ -17,7 +12,7 @@ type Category = variant {
 };
 
 type PostPrivacy = variant {
-    AnyBody;
+    Everyone;
     Followers;
     SpecificUsers;
 };
@@ -42,34 +37,42 @@ type NewPostResponse = variant {
     Error: record {
         title: text;
         description: text;
-        category: text;
     };
 };
 
 type GetPostsByCategoryArgs = record {
     jwt: text;
-    page: nat32;
+    from: nat32;
     limit: nat32;
     category: opt Category;
     sort: variant {
         RecentActivity;
         NewestPost;
     };
+    following_list: vec NobleId;
+    block_me_users: vec NobleId;
+    liked_posts: vec PostId;
+    bookmarks: vec PostId;
 };
 
 type PostSummary = record {
     post_id: PostId;
-    owner: NobleId;
+    noble_id: NobleId;
     title: text;
     description: text;
     category: Category;
     link_url: text;
     video_url: text;
     attached_file_id: FileId;
-    liked_user_count: nat32;
-    contributed_users: vec NobleId;
+    liked_users_count: nat32;
+    comments_count: nat32;
     date_created: TimestampMillis;
     date_last_commented: TimestampMillis;
+    like_state: bool;
+    bookmark_state: bool;
+    loading_like: bool;
+    loading_bookmark: bool;
+    loading_delete: bool;
 };
 
 type GetPostsByCategoryResponse = variant {
@@ -79,11 +82,40 @@ type GetPostsByCategoryResponse = variant {
         timestamp: TimestampMillis;
     };
     PermissionDenied;
-    InternalError: text;
+};
+
+type GetPostInfoArgs = record {
+    jwt: text;
+    post_id: PostId;
+};
+
+type GetPostInfoResponse = variant {
+    Success : record {
+        post_id: PostId;
+        local_post_canister_id: CanisterId;
+    };
+    PermissionDenied;
+    PostNotFound;
+};
+
+type Version = record {
+    major: nat32;
+    minor: nat32;
+    patch: nat32;
+};
+
+type InitArgs = record {
+    user_index_canister_id: CanisterId;
+    local_post_index_canister_ids: vec CanisterId;
+    local_user_index_canister_ids: vec CanisterId;
+    super_admin: principal;
+    wasm_version: Version;
 };
 
 service: (args: InitArgs) -> {
-    new_post: (NewPostArgs) -> (NewPostResponse);
+    new_post : (NewPostArgs) -> (NewPostResponse);
 
-    get_posts_by_category: (GetPostsByCategoryArgs) -> (GetPostsByCategoryResponse) query;
+    get_posts_by_category : (GetPostsByCategoryArgs) -> (GetPostsByCategoryResponse) query;
+
+    get_post_info : (GetPostInfoArgs) -> (GetPostInfoResponse) query;
 }

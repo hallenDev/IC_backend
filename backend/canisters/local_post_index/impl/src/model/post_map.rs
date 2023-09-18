@@ -9,10 +9,18 @@ pub struct PostMap {
 }
 
 impl PostMap {
+    pub fn get(&self, post_id: PostId) -> Option<&Post> {
+        self.posts.get(&post_id)
+    }
+
+    pub fn get_mut(&mut self, post_id: PostId) -> Option<&mut Post> {
+        self.posts.get_mut(&post_id)
+    }
+
     pub fn add_post(
         &mut self,
         post_id: PostId,
-        owner: NobleId,
+        noble_id: NobleId,
         title: String,
         description: String,
         category: Category,
@@ -23,10 +31,17 @@ impl PostMap {
         invited_users: HashSet<NobleId>,
         now: TimestampMillis,
     ) {
-        let post = Post::new(post_id, owner, title, description, category, link_url, video_url, attached_file_id, post_privacy, invited_users, now);
+        let post = Post::new(post_id, noble_id, title, description, category, link_url, video_url, attached_file_id, post_privacy, invited_users, now);
         self.posts.insert(post_id, post);
     }
 
+    pub fn remove_post(
+        &mut self,
+        post_id: PostId,
+    ) {
+        self.posts.remove(&post_id);
+    }
+    
     pub fn len(&self) -> usize {
         self.posts.len()
     }
@@ -35,11 +50,4 @@ impl PostMap {
     pub fn iter(&self) -> impl Iterator<Item = &Post> {
         self.posts.values()
     }
-
-    #[allow(dead_code)]
-    #[cfg(test)]
-    pub fn add_test_post(&mut self, msg: &Post) {
-        self.posts.insert(msg.post_id, msg.clone());
-    }
 }
-

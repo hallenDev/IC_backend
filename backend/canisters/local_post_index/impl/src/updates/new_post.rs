@@ -18,7 +18,7 @@ fn new_post_impl(args: Args, state: &mut RuntimeState) -> Response {
         .posts
         .add_post(
             args.post_id,
-            args.owner,
+            args.noble_id,
             args.title,
             args.description,
             args.category,

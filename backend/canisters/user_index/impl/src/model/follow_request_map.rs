@@ -11,8 +11,6 @@ pub struct FollowRequestMap {
     pub requests: HashSet<FollowRequest>,
 }
 
-
-
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct FollowRequest {
     pub sender: NobleId,

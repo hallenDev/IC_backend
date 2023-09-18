@@ -9,20 +9,24 @@ fn search_user(args: Args) -> Response {
     read_state(|state| search_user_impl(args, state))
 }
 
-fn search_user_impl(args: Args, state: &RuntimeState) -> Response {
-    if let Some(jwt) = check_jwt(&args.jwt, state.env.now()) {
-        let now = state.env.now();
+fn search_user_impl(
+    args: Args,
+    state: &RuntimeState
+) -> Response {
+    let now = state.env.now();
+
+    if let Some(jwt) = check_jwt(&args.jwt, now) {
         let users = &state.data.users;
         let mut search_term = args.search_term;
         search_term = search_term.trim().to_string().to_lowercase();
     
-        let matches: Vec<&User> = users.iter().filter(|item| is_filtered(item, &search_term, jwt.noble_id)).collect();
+        let matches: Vec<&User> = users.iter().filter(|item| is_filtered(item, &search_term, jwt.noble_id, &args.block_me_users, &args.exclude_users)).collect();
     
         // Page
         let results = matches
             .iter()
             .take(args.max_results as usize)
-            .map(|u| u.to_summary())
+            .map(|u| u.to_summary(args.following_list.contains(&u.noble_id)))
             .collect();
     
         Success(SuccessResult {
@@ -34,8 +38,23 @@ fn search_user_impl(args: Args, state: &RuntimeState) -> Response {
     }
 }
 
-fn is_filtered(user: &User, search_term: &str, noble_id: NobleId) -> bool {
+fn is_filtered(
+    user: &User,
+    search_term: &str,
+    noble_id: NobleId,
+    block_me_users: &Vec<NobleId>,
+    exclude_users: &Vec<NobleId>
+) -> bool {
     if user.noble_id == noble_id {
+        return false;
+    }
+    if exclude_users.contains(&user.noble_id) {
+        return false;
+    }
+    if block_me_users.contains(&user.noble_id) {
+        return false;
+    }
+    if user.username.is_empty() {
         return false;
     }
     if format!("{} {}", user.first_name, user.last_name).to_lowercase().contains(search_term) {
@@ -64,9 +83,12 @@ mod tests {
 
         let response = search_user_impl(
             Args {
-                jwt: JWT::new(1, "".to_string(), "".to_string(), state.env.now()).to_string().unwrap(),
+                jwt : JWT::new_for_test(1, state.env.now()).to_string().unwrap(),
                 max_results: 1,
                 search_term: "viktor".to_string(),
+                following_list: vec![],
+                block_me_users: vec![],
+                exclude_users: vec![],
             },
             &state,
         );
@@ -84,9 +106,12 @@ mod tests {
 
         let response = search_user_impl(
             Args {
-                jwt: JWT::new(1, "".to_string(), "".to_string(), state.env.now()).to_string().unwrap(),
+                jwt : JWT::new_for_test(1, state.env.now()).to_string().unwrap(),
                 max_results: 10,
                 search_term: "viktor".to_string(),
+                following_list: vec![],
+                block_me_users: vec![],
+                exclude_users: vec![],
             },
             &state,
         );
@@ -105,16 +130,19 @@ mod tests {
 
         let response = search_user_impl(
             Args {
-                jwt: JWT::new(1, "".to_string(), "".to_string(), state.env.now()).to_string().unwrap(),
+                jwt : JWT::new_for_test(1, state.env.now()).to_string().unwrap(),
                 max_results: 10,
                 search_term: "rustdev".to_string(),
+                following_list: vec![],
+                block_me_users: vec![],
+                exclude_users: vec![],
             },
             &state,
         );
 
         if let Response::Success(results) = response {
             assert_eq!(1, results.users.len());
-            assert_eq!("user1".to_string(), results.users[0].username);
+            assert_eq!(2, results.users[0].noble_id);
         } else {
             assert!(false);
         }

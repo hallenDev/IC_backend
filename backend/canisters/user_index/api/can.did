@@ -1,37 +1,54 @@
 type CanisterId = principal;
 type EmptyArgs = record {};
-type EmptyResponse = variant{ Success; };
+type EmptyResponse = variant { Success };
+type TempId = nat32;
 type NobleId = nat64;
+type AvatarId = nat64;
 type TimestampMillis = nat64;
 
-type RegisterUserArgs = record {
+type Country = variant {
+    AD; AE; AF; AG; AI; AL; AM; AN; AO; AQ; AR; AS; AT; AU; AW; AZ; BA; BB; BD; BE; BF; BG; BH; BI; BJ; BM; BN; BO; BR; BS;
+    BT; BV; BW; BY; BZ; CA; CC; CD; CF; CG; CH; CI; CK; CL; CM; CN; CO; CR; CU; CV; CX; CY; CZ; DE; DJ; DK; DM; DO; DZ; EC;
+    EE; EG; EH; ER; ES; ET; FI; FJ; FK; FM; FO; FR; GA; GB; GD; GE; GF; GG; GH; GI; GL; GM; GN; GP; GQ; GR; GS; GT; GU; GW;
+    GY; GZ; HK; HM; HN; HR; HT; HU; ID; IE; IL; IM; IN; IO; IQ; IR; IS; IT; JE; JM; JO; JP; KE; KG; KH; KI; KM; KN; KP; KR;
+    KW; KY; KZ; LA; LB; LC; LI; LK; LR; LS; LT; LU; LV; LY; MA; MC; MD; ME; MG; MH; MK; ML; MM; MN; MO; MP; MQ; MR; MS; MT;
+    MU; MV; MW; MX; MY; MZ; NA; NC; NE; NF; NG; NI; NL; NO; NP; NR; NU; NZ; OM; PA; PE; PF; PG; PH; PK; PL; PM; PN; PR; PS;
+    PT; PW; PY; QA; RE; RO; RS; RU; RW; SA; SB; SC; SD; SE; SG; SH; SI; SJ; SK; SL; SM; SN; SO; SR; ST; SV; SY; SZ; TC; TD;
+    TF; TG; TH; TJ; TK; TL; TM; TN; TO; TR; TT; TV; TW; TZ; UA; UG; UM; US; UY; UZ; VA; VC; VE; VG; VI; VN; VU; WF; WS; XK;
+    YE; YT; ZA; ZM; ZW;
+};
+
+type AcademicDegree = variant {
+    AA; AS; BVetMed; BA; BEng; BFA; BS; Mphil; PhD; GED; HS; Lic; MA; MFA; MRes; MS; MDPhD; MD; Other;
+};
+
+type UserInfo = record {
+    noble_id: NobleId;
+    canister_id: CanisterId;
+    avatar_id: AvatarId;
     username: text;
-    email: text;
-    password: text;
-    password_confirm: text;
+    first_name: text;
+    last_name: text;
+};
+
+type RegisterUserArgs = record {
+    username : text;
+    email : text;
+    password : text;
+    password_confirm : text;
 };
 
 type RegisterUserResponse = variant {
-    Success: record {
-        canister_id: CanisterId;
-    };
-    AlreadyRegistered;
+    Success: TempId;
     UserLimitReached;
-    UsernameInvalid;
-    UsernameTooShort: nat16;
-    UsernameTooLong: nat16;
-    UsernameAlreayExist;
     CyclesBalanceTooLow;
-    InternalError: text;
-    PublicKeyInvalid: text;
-    ReferralCodeInvalid;
-    ReferralCodeAlreadyClaimed;
-    ReferralCodeExpired;
-    PasswordIsRequired;
-    PasswordLengthIsInvalid: record{nat16; nat16};
-    PasswordIsnotMatch;
-    PasswordHashError;
-    EmailIsInvalid;
+    Error: record {
+        username: text;
+        password: text;
+        password_confirm: text;
+        email: text;
+    };
+    InternalError : text;
 };
 
 type CheckUsernameArgs = record {
@@ -46,81 +63,40 @@ type CheckUsernameResponse = variant {
     UsernameTooLong : nat16;
 };
 
-
 type CheckEmailArgs = record {
     email : text;
 };
 
 type CheckEmailResponse = variant {
     Success;
-    EmailAlreadyExist;
-};
-
-type UserArgs = record {
-    jwt: text;
-    noble_id: NobleId;
-};
-
-type FollowingUser = record {
-    noble_id: NobleId;
-    is_muted: bool;
-};
-
-type Follower = record {
-    noble_id: NobleId;
-    is_approved: bool;
-};
-
-type UserDetail = record {
-    noble_id: NobleId;
-    username: text;
-    first_name: text;
-    last_name: text;
-    country: text;
-    city: text;
-    photo: vec nat8;
-    email: text;
-    bio: text;
-
-    // social links
-    linkedin_handle: text;
-    twitter_handle: text;
-    mastodon_handle: text;
-    github_handle: text;
-    facebook_handle: text;
-    personal_website: text;
-
-    followers: vec Follower;
-    following_list: vec FollowingUser;
-
-    date_created: TimestampMillis;
-    date_updated: TimestampMillis;
-};
-
-type UserResponse = variant {
-    Success: UserDetail;
-    PermissionDenied;
-    UserNotFound;
-    InternalError: text;
+    EmailTaken;
+    EmailIsInvalid;
 };
 
 type UserSummary = record {
     noble_id: NobleId;
-    canister_id: CanisterId;
+    local_user_canister_id: CanisterId;
+    avatar_id: AvatarId;
     username: text;
-    email: text;
     first_name: text;
     last_name: text;
-    country: text;
-    city: text;
-    bio: text;
     date_created: TimestampMillis;
+    degree: opt AcademicDegree;
+    bio: text;
+    follow_state: bool;
+    country: opt Country;
+    city: text;
+    is_online: bool;
+    loading_state: bool;
 };
 
 type SearchUserArgs = record {
-    jwt: text;
+    jwt : text;
     search_term : text;
     max_results : nat8;
+    following_list: vec NobleId;
+    block_me_users: vec NobleId;
+    exclude_users: vec NobleId;
 };
 
 type SearchUserResponse = variant {
@@ -132,9 +108,12 @@ type SearchUserResponse = variant {
 };
 
 type SearchUserByUsernameArgs = record {
-    jwt: text;
+    jwt : text;
     search_term : text;
     max_results : nat8;
+    following_list: vec NobleId;
+    block_me_users: vec NobleId;
+    exclude_users: vec NobleId;
 };
 
 type SearchUserByUsernameResponse = variant {
@@ -146,38 +125,207 @@ type SearchUserByUsernameResponse = variant {
 };
 
 type LoginUserArgs = record {
-    email: text;
-    password: text;
+    email : text;
+    password : text;
+};
+
+type SuccessLogin = record {
+    jwt: text;
+    noble_id: NobleId;
+    username: text;
+    first_name: text;
+    last_name: text;
+    canister_id: CanisterId;
+    avatar_id: AvatarId;
 };
 
 type LoginUserResponse = variant {
-    Success: record {
-        canister_id: CanisterId;
-        jwt: text;
-    };
+    Success : SuccessLogin;
     UnregisteredUser;
     EmailOrPasswordIncorrect;
+    InternalError : text;
+};
+
+type GetUsersArgs = record {
+    jwt: text;
+    page: nat32;
+    limit: nat32;
+    following_list: vec NobleId;
+    block_me_users: vec NobleId;
+};
+
+type GetUsersResponse = variant {
+    Success: record {
+        total_users_count: nat32;
+        users: vec UserSummary;
+        timestamp: TimestampMillis;
+    };
+    PermissionDenied;
+};
+
+type GetUserInfoArgs = record {
+    jwt: text;
+    noble_id: NobleId;
+};
+
+type GetUserInfoResponse = variant {
+    Success: UserInfo;
+    UserNotFound;
+    PermissionDenied;
+};
+
+type GetUserInfosArgs = record {
+    jwt: text;
+    noble_ids: vec NobleId;
+};
+
+type GetUserInfosResponse = variant {
+    Success: vec UserInfo;
+    PermissionDenied;
+};
+
+type GetUserInfoByUsernameArgs = record {
+    jwt: text;
+    username: text;
+};
+
+type GetUserInfoByUsernameResponse = variant {
+    Success: UserInfo;
+    UserNotFound;
+    PermissionDenied;
+};
+
+type LoginUserWithInternetIdentityResponse = variant {
+    Success : SuccessLogin;
+    UsernameRequire : record {
+        jwt: text;
+    };
+    InternalError : text;
+    InvalidInternetIdentity;
+    UserLimitReached;
+};
+
+type SetUsernameArgs = record {
+    jwt: text;
+    username: text;
+};
+
+type SetUsernameResponse = variant {
+    Success: SuccessLogin;
+    PermissionDenied;
+    InvalidInternetIdentity;
+    UserNotFound;
+    Error: record {
+        username: text;
+    };
     InternalError: text;
 };
 
-type TestArgs = record {
-    user_index_canister_id: principal;
+type ResetPasswordArgs = record {
+    email: text;
+};
+
+type ResetPasswordResponse = variant {
+    Success: TempId;
+    UserNotFound;
+    EmailNotSet;
+};
+
+type VerifyCodeArgs = record {
+    id: TempId;
+    passkey: text;
+};
+
+type VerifyCodeResponse = variant {
+    Success: SuccessLogin;
+    TempNotExist;
+    InvalidPasskey;
+    InternalError: text;
+};
+
+type VerifyCodeResendArgs = record {
+    id: TempId;
+    email: text;
+};
+
+type VerifyCodeResendResponse = variant {
+    Success;
+    EmailNotCorrect;
+    TempNotExist;
+    AlreadySent;
+};
+
+type LoginUserWithGoogleArgs = record {
+    email: text;
+    first_name: text;
+    last_name: text;
+};
+
+type LoginUserWithGoogleResponse = variant {
+    Success: SuccessLogin;
+    UsernameRequire: record {
+        jwt: text;
+    };
+    InternalError: text;
+    UserLimitReached;
+};
+
+type SendFeedbackArgs = record {
+    email: text;
+    feedback: text;
+};
+
+type SendFeedbackResponse = variant {
+    Success;
+    EmailIsInvalid;
+    FeedBackTooLong: nat32;
+};
+
+type GetRandomUsersResponse = variant {
+    Success: vec UserInfo;
+};
+
+
+type SetPasswordArgs = record {
+    jwt: text;
+    password: text;
+    new_password: text;
+    password_confirm: text;
+};
+
+type SetPasswordResponse = variant {
+    Success;
+    PermissionDenied;
+    UserNotFound;
+    Error: record {
+        password: text;
+        new_password: text;
+        password_confirm: text;
+    };
+};
+
+type Version = record {
+    major: nat32;
+    minor: nat32;
+    patch: nat32;
 };
 
 type InitArgs = record {
-    internet_identity_canister_id: CanisterId;
-    post_index_canister_id: CanisterId;
-    local_user_index_canister_ids: vec CanisterId;
+    post_index_canister_id : CanisterId;
+    local_user_index_canister_ids : vec CanisterId;
+    local_post_index_canister_ids : vec CanisterId;
+    super_admin: principal;
+    wasm_version: Version;
 };
 
-service: (args: InitArgs) -> {
-    greet: (text) -> (text) query;
+service : (args : InitArgs) -> {
+    greet : (text) -> (text) query;
 
     // register user and return registered local user index canister.
     register_user : (RegisterUserArgs) -> (RegisterUserResponse);
 
     // login user
-    login_user: (LoginUserArgs) -> (LoginUserResponse);
+    login_user : (LoginUserArgs) -> (LoginUserResponse) query;
 
     // This check whether the username already exists
     check_username : (CheckUsernameArgs) -> (CheckUsernameResponse) query;
@@ -185,11 +333,34 @@ service: (args: InitArgs) -> {
     // This check whether the username already exists
     check_email : (CheckEmailArgs) -> (CheckEmailResponse) query;
 
-    user: (UserArgs) -> (UserResponse) query;
+    // get users.
+    get_users : (GetUsersArgs) -> (GetUsersResponse) query;
+
+    get_user_info : (GetUserInfoArgs) -> (GetUserInfoResponse) query;
+    get_user_info_by_username : (GetUserInfoByUsernameArgs) -> (GetUserInfoByUsernameResponse) query;
+    get_user_infos : (GetUserInfosArgs) -> (GetUserInfosResponse) query;
+
+    login_user_with_internet_identity : (EmptyArgs) -> (LoginUserWithInternetIdentityResponse);
+
+    login_user_with_google : (LoginUserWithGoogleArgs) -> (LoginUserWithGoogleResponse);
+
+    set_username : (SetUsernameArgs) -> (SetUsernameResponse);
+
+    set_password : (SetPasswordArgs) -> (SetPasswordResponse);
+
+    reset_password : (ResetPasswordArgs) -> (ResetPasswordResponse);
+
+    verify_code : (VerifyCodeArgs) -> (VerifyCodeResponse);
+
+    verify_code_resend : (VerifyCodeResendArgs) -> (VerifyCodeResendResponse);
+
+    send_feedback : (SendFeedbackArgs) -> (SendFeedbackResponse);
+
+    get_random_users : (EmptyArgs) -> (GetRandomUsersResponse) query;
 
     // search users by personal information.
-    search_user: (SearchUserArgs) -> (SearchUserResponse) query;
+    search_user : (SearchUserArgs) -> (SearchUserResponse) query;
 
     // search users by username.
-    search_user_by_username: (SearchUserByUsernameArgs) -> (SearchUserByUsernameResponse) query;
-}
+    search_user_by_username : (SearchUserByUsernameArgs) -> (SearchUserByUsernameResponse) query;
+};

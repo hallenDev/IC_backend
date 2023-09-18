@@ -8,6 +8,7 @@ edition = "2021"
 
 [dependencies]
 candid = { workspace = true }
+human_readable = { path = "../../../libraries/human_readable" }
 ic-cdk = { workspace = true }
 ic-cdk-timers = { workspace = true }
 serde = { workspace = true }

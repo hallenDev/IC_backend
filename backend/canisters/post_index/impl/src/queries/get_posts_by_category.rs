@@ -3,99 +3,39 @@ use std::cmp::Ordering;
 use crate::{read_state, RuntimeState, model::post::Post};
 use ic_cdk_macros::query;
 use post_index_canister::get_posts_by_category::{Response::*, *};
-use types::{Category, PostPrivacy, check_jwt, NobleId};
+use types::check_jwt;
 
 #[query]
-async fn get_posts_by_category(args: Args) -> Response {
-    let (user_index_canister_id, now) = read_state(|state| (state.data.user_index_canister_id, state.env.now()));
-
-    if let Some(jwt) = check_jwt(&args.jwt, now) {
-        let local_user_index_canister_id = match user_index_canister_c2c_client::c2c_get_local_user_index_canister_id(
-            user_index_canister_id,
-            &user_index_canister::c2c_get_local_user_index_canister_id::Args{noble_id: jwt.noble_id}
-        ).await {
-            Ok(response) => {
-                match response {
-                    user_index_canister::c2c_get_local_user_index_canister_id::Response::Success(id) => id,
-                    user_index_canister::c2c_get_local_user_index_canister_id::Response::UserNotFound => return PermissionDenied,
-                }
-            },
-            Err(error) => return InternalError(format!("{:?}", error)),
-        };
-
-        let following_list = match local_user_index_canister_c2c_client::c2c_get_following_list(
-            local_user_index_canister_id,
-            &local_user_index_canister::c2c_get_following_list::Args{noble_id: jwt.noble_id}
-        ).await {
-            Ok(response) => {
-                match response {
-                    local_user_index_canister::c2c_get_following_list::Response::Success(list) => list,
-                    local_user_index_canister::c2c_get_following_list::Response::UserNotFound => return PermissionDenied,
-                }
-            },
-            Err(error) => return InternalError(format!("{:?}", error)),
-        };
-
-        let block_me_users = match local_user_index_canister_c2c_client::c2c_get_block_me_users(
-            local_user_index_canister_id,
-            &local_user_index_canister::c2c_get_block_me_users::Args{noble_id: jwt.noble_id}
-        ).await {
-            Ok(response) => {
-                match response {
-                    local_user_index_canister::c2c_get_block_me_users::Response::Success(list) => list,
-                    local_user_index_canister::c2c_get_block_me_users::Response::UserNotFound => return PermissionDenied,
-                }
-            },
-            Err(error) => return InternalError(format!("{:?}", error)),
-        };
-
-        let block_users = match local_user_index_canister_c2c_client::c2c_get_block_users(
-            local_user_index_canister_id,
-            &local_user_index_canister::c2c_get_block_users::Args{noble_id: jwt.noble_id}
-        ).await {
-            Ok(response) => {
-                match response {
-                    local_user_index_canister::c2c_get_block_users::Response::Success(list) => list,
-                    local_user_index_canister::c2c_get_block_users::Response::UserNotFound => return PermissionDenied,
-                }
-            },
-            Err(error) => return InternalError(format!("{:?}", error)),
-        };
-
-        read_state(|state| get_posts_by_category_impl(args, jwt.noble_id, following_list, block_me_users, block_users, state))
-    } else {
-        PermissionDenied
-    }
+fn get_posts_by_category(args: Args) -> Response {
+    read_state(|state| get_posts_by_category_impl(args, state))
 }
 
 fn get_posts_by_category_impl(
     args: Args,
-    noble_id: NobleId,
-    following_list: Vec<NobleId>,
-    block_me_users: Vec<NobleId>,
-    block_users: Vec<NobleId>,
     state: &RuntimeState
 ) -> Response {
     let now = state.env.now();
 
-    let mut matches: Vec<&Post> = state.data.posts.iter().filter(|item| is_filtered(item, noble_id, &args.category, &following_list, &block_me_users, &block_users)).collect();
+    let noble_id = check_jwt(&args.jwt, now).unwrap_or_default().noble_id;
+
+    let mut matches: Vec<&Post> = state.data.posts.iter().filter(|item| item.can_show(noble_id, &args.category, &args.following_list, &args.block_me_users)).collect();
 
     matches.sort_unstable_by(|lhs, rhs| {
-        order_messages(&args.sort, lhs, rhs)
+        order_posts(&args.sort, lhs, rhs)
     });
 
-    let from = std::cmp::min(((args.page - 1) * args.limit )as usize, matches.len());
+    let total_posts_count = matches.len() as u32;
 
-    let results = matches[from..]
-        .iter()
+    let results = matches.iter()
+        .skip(args.from as usize - 1)
         .take(args.limit as usize)
-        .map(|item| item.to_summary())
+        .map(|item| item.to_summary(args.liked_posts.contains(&item.post_id), args.bookmarks.contains(&item.post_id)))
         .collect();
 
-    Success(SuccessResult { total_posts_count: matches.len() as u32, posts: results, timestamp: now })
+    Success(SuccessResult { total_posts_count, posts: results, timestamp: now })
 }
 
-fn order_messages(sort_dir: &Sort, lhs: &Post, rhs: &Post) -> Ordering {
+fn order_posts(sort_dir: &Sort, lhs: &Post, rhs: &Post) -> Ordering {
     if *sort_dir == Sort::NewestPost {
         if lhs.date_created > rhs.date_created {
             Ordering::Less
@@ -121,27 +61,284 @@ fn order_messages(sort_dir: &Sort, lhs: &Post, rhs: &Post) -> Ordering {
     }
 }
 
-fn is_filtered(
-    post: &Post,
-    noble_id: NobleId,
-    category: &Option<Category>,
-    following_list: &Vec<NobleId>,
-    block_me_users: &Vec<NobleId>,
-    block_users: &Vec<NobleId>,
-) -> bool {
-    if block_me_users.contains(&post.owner) || block_users.contains(&post.owner) {
-        return false;
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+    use super::*;
+    use crate::model::post::Post;
+    use crate::Data;
+    use types::{JWT, Category, PostPrivacy, NobleId};
+    use utils::env::test::TestEnv;
+
+    #[test]
+    fn search_results_page_limit() {
+        let state = setup_runtime_state();
+
+        assert_eq!(state.data.posts.len(), 6);
+
+        let response = get_posts_by_category_impl(
+            Args {
+                jwt : JWT::new_for_test(5, state.env.now()).to_string().unwrap(),
+                from: 3,
+                limit: 2,
+                category: None,
+                sort: Sort::NewestPost,
+                following_list: vec![],
+                block_me_users: vec![],
+                liked_posts: vec![],
+                bookmarks: vec![],
+            },
+            &state,
+        );
+
+        if let Success(result) = response {
+            assert_eq!(result.posts.len(), 1);
+            assert_eq!(result.posts[0].post_id, 1);
+        } else {
+            assert!(false);
+        }
     }
 
-    if post.post_privacy == PostPrivacy::AnyBody ||
-      (post.post_privacy == PostPrivacy::Followers && following_list.contains(&post.owner)) ||
-      (post.post_privacy == PostPrivacy::SpecificUsers && post.invited_users.contains(&noble_id)) {
-        if let Some(cate) = category {
-            *cate == post.category
+    #[test]
+    fn search_results_all() {
+        let state = setup_runtime_state();
+
+        assert_eq!(state.data.posts.len(), 6);
+
+        let response = get_posts_by_category_impl(
+            Args {
+                jwt : JWT::new_for_test(5, state.env.now()).to_string().unwrap(),
+                from: 1,
+                limit: 5,
+                category: None,
+                sort: Sort::RecentActivity,
+                following_list: vec![],
+                block_me_users: vec![],
+                liked_posts: vec![],
+                bookmarks: vec![],
+            },
+            &state,
+        );
+
+        if let Success(result) = response {
+            assert_eq!(result.posts.len(), 3);
+            assert_eq!(result.posts[0].post_id, 1);
+            assert_eq!(result.posts[1].post_id, 3);
+            assert_eq!(result.posts[2].post_id, 2);
         } else {
-            true
+            assert!(false);
         }
-    } else {
-        false
+    }
+
+    #[test]
+    fn no_search_results_by_over_page() {
+        let state = setup_runtime_state();
+
+        let response = get_posts_by_category_impl(
+            Args {
+                jwt : JWT::new_for_test(5, state.env.now()).to_string().unwrap(),
+                from: 5,
+                limit: 2,
+                category: None,
+                sort: Sort::NewestPost,
+                following_list: vec![],
+                block_me_users: vec![],
+                liked_posts: vec![],
+                bookmarks: vec![],
+            },
+            &state,
+        );
+
+        if let Success(result) = response {
+            assert_eq!(result.posts.len(), 0);
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn search_results_by_category() {
+        let state = setup_runtime_state();
+
+        let response = get_posts_by_category_impl(
+            Args {
+                jwt : JWT::new_for_test(5, state.env.now()).to_string().unwrap(),
+                from: 1,
+                limit: 2,
+                category: Some(Category::GeneralDiscussion),
+                sort: Sort::NewestPost,
+                following_list: vec![],
+                block_me_users: vec![],
+                liked_posts: vec![],
+                bookmarks: vec![],
+            },
+            &state,
+        );
+
+        if let Success(result) = response {
+            assert_eq!(result.posts.len(), 2);
+            assert_eq!(result.posts[0].post_id, 2);
+            assert_eq!(result.posts[1].post_id, 1);
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn search_results_by_follower() {
+        let state = setup_runtime_state();
+
+        let response = get_posts_by_category_impl(
+            Args {
+                jwt : JWT::new_for_test(2, state.env.now()).to_string().unwrap(),
+                from: 1,
+                limit: 5,
+                category: None,
+                sort: Sort::NewestPost,
+                following_list: vec![4 as NobleId, 1 as NobleId],
+                block_me_users: vec![],
+                liked_posts: vec![],
+                bookmarks: vec![],
+            },
+            &state,
+        );
+
+        if let Success(result) = response {
+            assert_eq!(result.posts.len(), 5);
+            assert_eq!(result.posts[0].post_id, 6);
+            assert_eq!(result.posts[1].post_id, 2);
+            assert_eq!(result.posts[2].post_id, 3);
+            assert_eq!(result.posts[3].post_id, 4);
+            assert_eq!(result.posts[4].post_id, 1);
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn search_results_by_specific_user() {
+        let state = setup_runtime_state();
+
+        let response = get_posts_by_category_impl(
+            Args {
+                jwt : JWT::new_for_test(3, state.env.now()).to_string().unwrap(),
+                from: 1,
+                limit: 5,
+                category: None,
+                sort: Sort::NewestPost,
+                following_list: vec![],
+                block_me_users: vec![],
+                liked_posts: vec![],
+                bookmarks: vec![],
+            },
+            &state,
+        );
+
+        if let Success(result) = response {
+            assert_eq!(result.posts.len(), 4);
+            assert_eq!(result.posts[0].post_id, 2);
+            assert_eq!(result.posts[1].post_id, 3);
+            assert_eq!(result.posts[2].post_id, 5);
+            assert_eq!(result.posts[3].post_id, 1);
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn search_results_by_block_user() {
+        let state = setup_runtime_state();
+
+        let response = get_posts_by_category_impl(
+            Args {
+                jwt : JWT::new_for_test(5, state.env.now()).to_string().unwrap(),
+                from: 1,
+                limit: 5,
+                category: None,
+                sort: Sort::NewestPost,
+                following_list: vec![4 as NobleId],
+                block_me_users: vec![4 as NobleId, 2 as NobleId],
+                liked_posts: vec![],
+                bookmarks: vec![],
+            },
+            &state,
+        );
+
+        if let Success(result) = response {
+            assert_eq!(result.posts.len(), 2);
+            assert_eq!(result.posts[0].post_id, 3);
+            assert_eq!(result.posts[1].post_id, 1);
+        } else {
+            assert!(false);
+        }
+    }
+
+    fn setup_runtime_state() -> RuntimeState {
+        let env = TestEnv::default();
+        let mut data = Data::default();
+
+        data.posts.add_test_post(Post {
+            post_id: 1,
+            noble_id: 1,
+            category: Category::GeneralDiscussion,
+            date_created: 100,
+            date_last_commented: 1000,
+            ..Default::default()
+        });
+
+        data.posts.add_test_post(Post {
+            post_id: 2,
+            noble_id: 2,
+            category: Category::GeneralDiscussion,
+            date_created: 200,
+            date_last_commented: 200,
+            ..Default::default()
+        });
+
+        data.posts.add_test_post(Post {
+            post_id: 3,
+            noble_id: 1,
+            category: Category::IntroduceYourself,
+            date_created: 200,
+            date_last_commented: 500,
+            ..Default::default()
+        });
+
+        data.posts.add_test_post(Post {
+            post_id: 4,
+            noble_id: 4,
+            category: Category::IntroduceYourself,
+            post_privacy: PostPrivacy::Followers,
+            date_created: 200,
+            date_last_commented: 500,
+            ..Default::default()
+        });
+
+        let mut invited_users = HashSet::default();
+        invited_users.insert(3 as NobleId);
+        invited_users.insert(4 as NobleId);
+
+        data.posts.add_test_post(Post {
+            post_id: 5,
+            noble_id: 1,
+            category: Category::GeneralDiscussion,
+            post_privacy: PostPrivacy::SpecificUsers,
+            invited_users,
+            date_created: 200,
+            date_last_commented: 500,
+            ..Default::default()
+        });
+
+        data.posts.add_test_post(Post {
+            post_id: 6,
+            noble_id: 1,
+            category: Category::GeneralDiscussion,
+            post_privacy: PostPrivacy::Followers,
+            date_created: 300,
+            date_last_commented: 400,
+            ..Default::default()
+        });
+
+        RuntimeState::new(Box::new(env), data)
     }
 }

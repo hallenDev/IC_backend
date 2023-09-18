@@ -1,9 +1,9 @@
 use crate::{mutate_state, RuntimeState, read_state, MAX_TITLE_LENGTH, MAX_DESCRIPTION_LENGTH};
 use ic_cdk_macros::update;
 use rand::Rng;
-use types::{CanisterId, NobleId, check_jwt, PostId, TimestampMillis};
+use types::{CanisterId, NobleId, check_jwt, PostId, TimestampMillis, Category};
 use post_index_canister::new_post::{Response::*, *};
-use utils::truncate_string::truncate_string;
+use utils::{truncate_string::truncate_string, field_validation::validate_field_value};
 
 #[update]
 async fn new_post(args: Args) -> Response {
@@ -36,9 +36,10 @@ async fn new_post(args: Args) -> Response {
                     .posts
                     .add_post(
                         post_id,
+                        canister_id,
                         jwt.noble_id,
                         args.title.clone(),
-                        truncate_string(args.description.clone(), 100),
+                        truncate_string(args.description.clone(), 300),
                         args.category.clone(),
                         args.link_url.clone(),
                         args.video_url.clone(),
@@ -81,20 +82,18 @@ fn prepare(args: &Args, state: &mut RuntimeState) -> Result<CanisterId, Response
 
     let mut error = ErrorResult::default();
 
-    if args.title.is_empty() {
-        error.title = format!("This field is required.");
+    if args.category == Category::Questions || args.category == Category::UserFeedback {
+        if let Err(err) = validate_field_value("Title", true, MAX_TITLE_LENGTH, &args.title, utils::field_validation::FieldType::Text) {
+            error.title = err;
+        }
+    } else {
+        if !args.title.is_empty() {
+            error.title = format!("Title is not required.");
+        }
     }
 
-    if args.title.len() > MAX_TITLE_LENGTH {
-        error.description = format!("Title must be less than {} characters.", MAX_TITLE_LENGTH);
-    }
-
-    if args.description.is_empty() {
-        error.description = format!("This field is required.");
-    }
-    
-    if args.description.len() > MAX_DESCRIPTION_LENGTH {
-        error.description = format!("Description must be less than {} characters.", MAX_DESCRIPTION_LENGTH);
+    if let Err(err) = validate_field_value("Description", true, MAX_DESCRIPTION_LENGTH, &args.description, utils::field_validation::FieldType::Text) {
+        error.description = err;
     }
 
     if error.is_error() {
@@ -108,7 +107,7 @@ fn prepare(args: &Args, state: &mut RuntimeState) -> Result<CanisterId, Response
 async fn commit_local_index(
     canister_id: CanisterId,
     post_id: PostId,
-    owner: NobleId,
+    noble_id: NobleId,
     args: &Args,
     now: TimestampMillis
 ) -> Result<(), Response> {
@@ -117,7 +116,7 @@ async fn commit_local_index(
         canister_id,
         &local_post_index_canister::new_post::Args {
             post_id,
-            owner,
+            noble_id,
             title: args.title.clone(),
             description: args.description.clone(),
             category: args.category,

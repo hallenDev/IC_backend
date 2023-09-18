@@ -1,4 +1,3 @@
-use crate::model::user_map::UpdateUserResult;
 use crate::{mutate_state, RuntimeState, read_state};
 use ic_cdk_macros::update;
 use local_user_index_canister::follow_user::{Response::*, *};
@@ -30,41 +29,27 @@ async fn follow_user(args: Args) -> Response {
 }
 
 fn follow_user_impl(noble_id: NobleId, args: Args, state: &mut RuntimeState) -> Response {
-    if let Some(sender) = state.data.users.get(noble_id) {
-        let sender_id = sender.noble_id;
+    if let Some(sender) = state.data.users.get_mut(noble_id) {
+        let sender_id = noble_id;
         let receiver_id = args.noble_id;
         if sender.is_following(receiver_id) {
             return AlreadyFollowing;
         }
 
         if sender_id == receiver_id {
-                return UserNotFound;
+            return UserNotFound;
         }
 
-        let mut sender_to_update = sender.clone();
-        sender_to_update.add_following_user(args.noble_id);
+        sender.add_following_user(args.noble_id);
 
-        let now = state.env.now();
-
-        match state.data.users.update(sender_to_update, now) {
-            UpdateUserResult::Success => {},
-            UpdateUserResult::UserNotFound => return UserNotFound,
-        }
-
-        if let Some(receiver) = state.data.users.get(receiver_id) {
-            let mut receiver_to_update = receiver.clone();
-            receiver_to_update.add_follower(sender_id);
-
-            match state.data.users.update(receiver_to_update, now) {
-                UpdateUserResult::Success => Success,
-                UpdateUserResult::UserNotFound => UserNotFound
-            }
+        if let Some(receiver) = state.data.users.get_mut(receiver_id) {
+            receiver.add_follower(sender_id);
         } else {
             state.push_event_to_user_index(UserIndexEvent::UserFollowed(Box::new(
                 FollowUser { sender_id, receiver_id }
             )));
-            Success
         }
+        Success
     } else {
         UserNotFound
     }
@@ -83,7 +68,7 @@ mod tests {
     fn success() {
         let mut runtime_state = setup_runtime_state();
 
-        let jwt = JWT::new(1, "".to_string(), "".to_string(), runtime_state.env.now());
+        let jwt = JWT::new_for_test(1, runtime_state.env.now());
         let args = Args {
             jwt: jwt.to_string().unwrap(),
             noble_id: 3,
@@ -100,7 +85,7 @@ mod tests {
     fn already_following() {
         let mut runtime_state = setup_runtime_state();
 
-        let jwt = JWT::new(1, "".to_string(), "".to_string(), runtime_state.env.now());
+        let jwt = JWT::new_for_test(1, runtime_state.env.now());
         let args = Args {
             jwt: jwt.to_string().unwrap(),
             noble_id: 4,
@@ -108,7 +93,12 @@ mod tests {
         let result = follow_user_impl(jwt.noble_id, args, &mut runtime_state);
         assert_eq!(result, Response::Success);
 
-        let jwt = JWT::new(1, "".to_string(), "".to_string(), runtime_state.env.now());
+        let jwt = JWT {
+            noble_id: 1,
+            iat: runtime_state.env.now(),
+            exp: runtime_state.env.now() + 60,
+            ..Default::default()
+        };
         let args = Args {
             jwt: jwt.to_string().unwrap(),
             noble_id: 4,

@@ -3,24 +3,28 @@
   "version": 1,
   "canisters": {
     "user_index": {
-      "type": "rust",
-      "package": "user_index_canister_impl",
-      "candid": "backend/canisters/user_index/api/can.did"
+      "type": "custom",
+      "candid": "backend/canisters/user_index/api/can.did",
+      "wasm": "wasms/user_index.wasm.gz",
+      "build": "./scripts/generate-wasm.sh user_index"
     },
     "local_user_index": {
-      "type": "rust",
-      "package": "local_user_index_canister_impl",
-      "candid": "backend/canisters/local_user_index/api/can.did"
+      "type": "custom",
+      "candid": "backend/canisters/local_user_index/api/can.did",
+      "wasm": "wasms/local_user_index.wasm.gz",
+      "build": "./scripts/generate-wasm.sh local_user_index"
     },
     "post_index": {
-      "type": "rust",
-      "package": "post_index_canister_impl",
-      "candid": "backend/canisters/post_index/api/can.did"
+      "type": "custom",
+      "candid": "backend/canisters/post_index/api/can.did",
+      "wasm": "wasms/post_index.wasm.gz",
+      "build": "./scripts/generate-wasm.sh post_index"
     },
     "local_post_index": {
-      "type": "rust",
-      "package": "local_post_index_canister_impl",
-      "candid": "backend/canisters/local_post_index/api/can.did"
+      "type": "custom",
+      "candid": "backend/canisters/local_post_index/api/can.did",
+      "wasm": "wasms/local_post_index.wasm.gz",
+      "build": "./scripts/generate-wasm.sh local_post_index"
     }
   },
   "defaults": {
@@ -32,10 +36,7 @@
   "networks": {
     "local": {
       "bind": "127.0.0.1:8080",
-      "type": "ephemeral",
-      "replica": {
-        "subnet_type": "system"
-      }
+      "type": "ephemeral"
     },
     "ic": {
       "providers": ["https://ic0.app/"],

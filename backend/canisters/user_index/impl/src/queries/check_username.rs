@@ -12,10 +12,14 @@ fn check_username_impl(args: Args, state: &RuntimeState) -> Response {
     match validate_username(&args.username) {
         Ok(_) => {
             if state.data.users.does_username_exist(&args.username) {
-                UsernameTaken
-            } else {
-                Success
+                return UsernameTaken;
             }
+
+            if state.data.temps.does_username_exist(&args.username) {
+                return UsernameTaken;
+            }
+
+            Success
         }
         Err(UsernameValidationError::TooShort(min_length)) => UsernameTooShort(min_length),
         Err(UsernameValidationError::TooLong(max_length)) => UsernameTooLong(max_length),

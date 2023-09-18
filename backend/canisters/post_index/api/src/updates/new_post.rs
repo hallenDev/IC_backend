@@ -30,7 +30,6 @@ pub enum Response {
 pub struct ErrorResult{
     pub title: String,
     pub description: String,
-    pub category: String,
 }
 
 impl ErrorResult {
@@ -38,14 +37,12 @@ impl ErrorResult {
         ErrorResult {
             title: String::new(),
             description: String::new(),
-            category: String::new(),
         }
     }
 
     pub fn is_error(&self) -> bool {
         !(self.title.is_empty() &&
-        self.description.is_empty() &&
-        self.category.is_empty())
+        self.description.is_empty())
     }
 }
 
@@ -54,7 +51,6 @@ impl Default for ErrorResult {
         ErrorResult {
             title: String::new(),
             description: String::new(),
-            category: String::new(),
         }
     }
 }
@@ -69,7 +65,7 @@ impl Default for Args {
             link_url: "".to_string(),
             video_url: "".to_string(),
             attached_file_id: 0,
-            post_privacy: PostPrivacy::AnyBody,
+            post_privacy: PostPrivacy::Everyone,
             invited_users: HashSet::new(),
         }
     }

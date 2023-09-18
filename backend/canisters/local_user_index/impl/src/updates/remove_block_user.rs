@@ -1,4 +1,3 @@
-use crate::model::user_map::UpdateUserResult;
 use crate::{mutate_state, RuntimeState, read_state};
 use ic_cdk_macros::update;
 use local_user_index_canister::remove_block_user::{Response::*, *};
@@ -30,38 +29,24 @@ async fn remove_block_user(args: Args) -> Response {
 }
 
 fn remove_block_user_impl(noble_id: NobleId, args: Args, state: &mut RuntimeState) -> Response {
-    if let Some(sender) = state.data.users.get(noble_id) {
-        let sender_id = sender.noble_id;
+    if let Some(sender) = state.data.users.get_mut(noble_id) {
+        let sender_id = noble_id;
         let receiver_id = args.noble_id;
 
         if !sender.is_blocked(receiver_id) {
             return BlockUserNotFound;
         }
 
-        let mut sender_to_update = sender.clone();
+        sender.remove_block_user(receiver_id);
 
-        sender_to_update.remove_block_user(receiver_id);
-        let now = state.env.now();
-
-        match state.data.users.update(sender_to_update, now) {
-            UpdateUserResult::Success => {},
-            UpdateUserResult::UserNotFound => return UserNotFound,
-        }
-
-        if let Some(receiver) = state.data.users.get(receiver_id) {
-            let mut receiver_to_update = receiver.clone();
-            receiver_to_update.remove_block_me_user(sender_id);
-
-            match state.data.users.update(receiver_to_update, now) {
-                UpdateUserResult::Success => Success,
-                UpdateUserResult::UserNotFound => UserNotFound
-            }
+        if let Some(receiver) = state.data.users.get_mut(receiver_id) {
+            receiver.remove_block_me_user(sender_id);
         } else {
             state.push_event_to_user_index(UserIndexEvent::UserUnblocked(Box::new(
                 BlockUser { sender_id, receiver_id }
             )));
-            Success
         }
+        Success
     } else {
         UserNotFound
     }
@@ -80,7 +65,7 @@ mod tests {
     fn success() {
         let mut runtime_state = setup_runtime_state();
 
-        let jwt = JWT::new(1, "".to_string(), "".to_string(), runtime_state.env.now());
+        let jwt = JWT::new_for_test(1, runtime_state.env.now());
         let args = Args {
             jwt: jwt.to_string().unwrap(),
             noble_id: 4,

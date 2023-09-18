@@ -1,8 +1,10 @@
-use crate::{init_state as set_state, mutate_state, Data, RuntimeState};
+use crate::{mutate_state, Data, RuntimeState, WASM_VERSION};
 use std::time::Duration;
+use tracing::info;
+use types::{Timestamped, Version};
 use utils::{
     env::{Environment, canister::CanisterEnv},
-    canister::raw_rand::get_random_seed,
+    canister::get_random_seed,
 };
 
 mod init;
@@ -16,10 +18,13 @@ fn init_env() -> Box<CanisterEnv> {
     Box::default()
 }
 
-fn init_state(env: Box<dyn Environment>, data: Data) {
-    let runtime_state = RuntimeState::new(env, data);
+fn init_state(env: Box<dyn Environment>, data: Data, wasm_version: Version) {
+    let now = env.now();
+    let state = RuntimeState::new(env, data);
 
-    set_state(runtime_state);
+    crate::jobs::start(&state);
+    crate::init_state(state);
+    WASM_VERSION.with(|v| *v.borrow_mut() = Timestamped::new(wasm_version, now));
 }
 
 fn reseed_rng() {
@@ -28,6 +33,6 @@ fn reseed_rng() {
     async fn reseed_rng_inner() {
         let seed = get_random_seed().await;
         mutate_state(|state| state.env = Box::new(CanisterEnv::new(seed)));
-        ic_cdk::println!("Successfully reseeded rng");
+        info!("Successfully reseeded rng");
     }
 }
